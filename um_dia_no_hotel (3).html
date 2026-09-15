@@ -11,7 +11,8 @@
     <meta property="og:type" content="website" />
     
     <!-- ATENÇÃO: Substitua a URL abaixo pelo link real da imagem de capa hospedada -->
-    <meta property="og:image" content="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80" /> 
+    <meta property="og:image" content="https://tguelssi.github.io/um-dia-no-hotel/capa.jpg" /> 
+    <meta property="og:url" content="https://tguelssi.github.io/um-dia-no-hotel/" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <!-- ... -->
@@ -868,23 +869,22 @@
             const renderEndAnim = () => (
                 <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white fade-in">
                     <ClockIcon size={48} className="text-blue-500 mb-4 animate-pulse" />
-                    <h1 className="text-2xl md:text-4xl font-black mb-2 text-center px-4">TURNO ENCERRADO</h1>
-                    <p className="text-sm md:text-base text-slate-400">Processando seu relatório gerencial...</p>
+                    <h2 className="text-2xl font-bold mb-2">Turno Encerrado</h2>
+                    <p className="text-slate-400">Processando seus resultados...</p>
                 </div>
             );
 
             const renderReport = () => {
-                // Cálculo de IA / Perfil Baseado em Dados Positivos
                 const getProfile = () => {
                     const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-                    const topSkill = sortedScores[0][0]; // chave com maior pontuação
-                    
+                    const topSkill = sortedScores[0][0];
+
                     const profiles = {
-                        hospede: { title: 'O Anfitrião', desc: 'Foco excepcional no encantamento e hospitalidade do cliente.', seed: 'Bella', color: 'from-pink-500 to-rose-500' },
-                        eficiencia: { title: 'O Velocista', desc: 'Resolução pragmática e extrema agilidade na operação.', seed: 'Felix', color: 'from-blue-500 to-cyan-500' },
-                        equipe: { title: 'O Agregador', desc: 'Mestre em sinergia, liderança e resolução de conflitos.', seed: 'Molly', color: 'from-purple-500 to-fuchsia-500' },
-                        organizacao: { title: 'O Estrategista', desc: 'Pilar da qualidade, processos e visão sistêmica profunda.', seed: 'Oliver', color: 'from-emerald-500 to-teal-500' },
-                        risco: { title: 'O Guardião', desc: 'Fortaleza nos processos legais, finanças e segurança patrimonial.', seed: 'Jack', color: 'from-orange-500 to-amber-500' }
+                        hospede: { title: 'O Anfitrião', desc: 'Sua prioridade é sempre o bem-estar e o encantamento do cliente.', seed: 'Bella', color: 'from-orange-400 to-rose-400' },
+                        eficiencia: { title: 'O Velocista', desc: 'Pragmatismo puro. Você resolve tudo no menor tempo possível.', seed: 'Felix', color: 'from-blue-400 to-cyan-500' },
+                        equipe: { title: 'O Maestro', desc: 'Você engaja todos ao seu redor e lidera através do exemplo.', seed: 'Oliver', color: 'from-emerald-400 to-teal-500' },
+                        organizacao: { title: 'O Metódico', desc: 'Processos, regras e padrões garantem a qualidade do seu trabalho.', seed: 'Jasper', color: 'from-slate-500 to-slate-700' },
+                        risco: { title: 'O Guardião', desc: 'Segurança e compliance em primeiro lugar. O hotel está blindado.', seed: 'Nala', color: 'from-purple-500 to-indigo-600' }
                     };
                     return profiles[topSkill] || profiles.organizacao; 
                 };
@@ -929,7 +929,7 @@
 
                 const handleShareWhatsApp = () => {
                     // Aqui você colocará a URL onde o jogo está hospedado (ex: https://meusite.com/um-dia-no-hotel)
-                    const urlDoJogo = "https://seusite.com/simulador"; // <<-- ALTERE AQUI
+                    const urlDoJogo = "https://tguelssi.github.io/um-dia-no-hotel/"; // <<-- ALTERE AQUI PARA O SEU LINK DO GITHUB
                     
                     const text = `🏨 *UM DIA NO HOTEL* - Resultado da Simulação!\n\nAcabei de finalizar meu turno no setor de *${sector.name}*.\n\nMeu Perfil: *${profile.title}*\n_${profile.desc}_\n\nDescubra o seu perfil hoteleiro também e jogue aqui 👇:\n${urlDoJogo}`;
                     
