@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Um Dia no Hotel - Simulador Educativo</title>
+
+    <!-- METATAGS OPEN GRAPH PARA WHATSAPP / REDES SOCIAIS -->
+    <meta property="og:title" content="🏨 Um Dia no Hotel - Simulador Educativo" />
+    <meta property="og:description" content="Você assumiu o turno. Agora, as decisões são suas! Descubra seu perfil profissional neste simulador de hotelaria." />
+    <meta property="og:type" content="website" />
+    
+    <!-- ATENÇÃO: Substitua a URL abaixo pelo link real da imagem de capa hospedada -->
+    <meta property="og:image" content="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80" /> 
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <!-- ... -->
+    
+    <!-- Polyfill process.env for React 18 in the browser -->
+    <script>
+        window.process = {
+            env: { NODE_ENV: 'production' }
+        };
+    </script>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            color: #0f172a; 
+            -webkit-tap-highlight-color: transparent; /* Remove highlight on mobile tap */
+        }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        .slide-up { animation: slideUp 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Ocultar scrollbar para uma pegada mais de App mobile */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const SECTORS = {
+            recepcao: { id: 'recepcao', name: 'Recepção', icon: '🛎️', desc: 'Check-in, check-out e relacionamento direto.', role: 'Assistente de Recepção', color: 'bg-blue-600' },
+            reservas: { id: 'reservas', name: 'Reservas', icon: '📅', desc: 'Disponibilidade, tarifas e vendas.', role: 'Assistente de Reservas', color: 'bg-indigo-600' },
+            governanca: { id: 'governanca', name: 'Governança', icon: '🧹', desc: 'Limpeza, enxoval e qualidade.', role: 'Supervisor de Governança', color: 'bg-teal-600' },
+            alimentos: { id: 'alimentos', name: 'Alimentos e Bebidas', icon: '🍽️', desc: 'Restaurante, bar e serviços.', role: 'Supervisor de Restaurante', color: 'bg-orange-600' },
+            manutencao: { id: 'manutencao', name: 'Manutenção', icon: '🔧', desc: 'Consertos e instalações.', role: 'Técnico de Manutenção', color: 'bg-stone-600' },
+            rh: { id: 'rh', name: 'Recursos Humanos', icon: '👥', desc: 'Gestão de pessoas e clima.', role: 'Assistente de RH', color: 'bg-purple-600' },
+            eventos: { id: 'eventos', name: 'Eventos', icon: '📣', desc: 'Grupos e salas de eventos.', role: 'Assistente de Eventos', color: 'bg-rose-600' },
+            lazer: { id: 'lazer', name: 'Lazer', icon: '🏝️', desc: 'Recreação e encantamento.', role: 'Monitor de Experiências', color: 'bg-yellow-500' },
+            admin: { id: 'admin', name: 'Administração', icon: '💼', desc: 'Financeiro e retaguarda.', role: 'Assistente Administrativo', color: 'bg-slate-700' }
+        };
+
+        // Algoritmo Fisher-Yates para embaralhamento real e imparcial
+        const shuffleArray = (array) => {
+            let shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+
+        const DATABASE = {
+            recepcao: [
+                { time: '14:15', context: 'O lobby está calmo.', problem: 'Hóspede chega 2 horas antes do check-in. O quarto ainda não está limpo e ele parece cansado.',
+                  options: [
+                      { text: 'Acomodar a bagagem, oferecer as áreas comuns do hotel e pedir para aguardar o horário oficial.', cons: 'O hóspede espera. Você garantiu que a Governança não fosse pressionada e seguiu a regra.', imp: { organizacao: 2, risco: 1 }, feedback: 'Protegeu os processos internos e o tempo da Governança.' },
+                      { text: 'Oferecer um café cortesia e tentar antecipar a limpeza junto à Governança.', cons: 'O hóspede se sente acolhido enquanto espera a priorização do quarto.', imp: { hospede: 2, equipe: 1 }, feedback: 'Mostrou grande hospitalidade e articulação amigável com a equipe.' },
+                      { text: 'Fazer um upgrade gratuito para um quarto de categoria superior que já está limpo.', cons: 'O hóspede entra imediatamente, liberando o lobby e resolvendo a pendência.', imp: { eficiencia: 2, hospede: 1 }, feedback: 'Tomou uma decisão ágil que resolveu o problema instantaneamente.' }
+                  ], pedag: 'Lidar com early check-in.' },
+                { time: '15:00', context: 'Telefone toca.', problem: 'Um hóspede liga da suíte dizendo que a TV não liga e quer assistir a um jogo agora.',
+                  options: [
+                      { text: 'Abrir um chamado formal no sistema para a Manutenção e informar o prazo padrão (30 min).', cons: 'O processo é registrado corretamente, garantindo rastreabilidade do reparo.', imp: { organizacao: 2, equipe: 1 }, feedback: 'Utilizou os canais oficiais, garantindo o registro e fluxo correto.' },
+                      { text: 'Pedir licença, ir rapidamente ao quarto e checar se é apenas a tomada fora da parede.', cons: 'Era a tomada. O problema é resolvido em 2 minutos sem onerar a manutenção.', imp: { eficiencia: 2, hospede: 1 }, feedback: 'Teve atitude prática e senso de urgência na resolução.' },
+                      { text: 'Oferecer que ele assista ao jogo no bar do hotel com um drink cortesia enquanto consertam.', cons: 'O hóspede aceita feliz e a manutenção tem tempo hábil para consertar.', imp: { hospede: 2, qualidade: 1 }, feedback: 'Transformou um problema técnico em uma experiência agradável.' }
+                  ], pedag: 'Resolução de problemas.' },
+                { time: '15:45', context: 'Fila no balcão.', problem: 'Reserva do cliente que está na sua frente não aparece no sistema, mas ele tem o voucher.',
+                  options: [
+                      { text: 'Acomodá-lo imediatamente em um quarto disponível e investigar a reserva depois.', cons: 'O cliente sobe aliviado, a fila anda e você ganha tempo para resolver o sistema.', imp: { eficiencia: 2, hospede: 2 }, feedback: 'Priorizou a fluidez da operação e o conforto do cliente.' },
+                      { text: 'Ligar para a central de reservas na mesma hora para entender a falha de integração.', cons: 'A falha é identificada na raiz. O cliente aguarda, mas vê transparência.', imp: { organizacao: 2, equipe: 1 }, feedback: 'Focou na integridade dos dados e na comunicação intersetorial.' },
+                      { text: 'Pedir mil desculpas, oferecer água e explicar que o sistema demorou a integrar, assumindo a falha.', cons: 'O cliente se acalma com a sua sinceridade e empatia enquanto você digita os dados manualmente.', imp: { hospede: 2, equipe: 1 }, feedback: 'Utilizou comunicação empática para gerenciar a expectativa.' }
+                  ], pedag: 'Gerenciamento de falha de sistema.' },
+                { time: '16:30', context: 'Email.', problem: 'Hóspede pede: "Aniversário de casamento, queremos algo especial", mas não comprou pacote.',
+                  options: [
+                      { text: 'Responder parabenizando e enviar o catálogo de pacotes românticos para compra.', cons: 'O hóspede recebe as opções institucionais e decide comprar um pacote básico.', imp: { organizacao: 2, risco: 1 }, feedback: 'Respeitou a política comercial e gerou receita (upselling).' },
+                      { text: 'Escrever um bilhete à mão e deixar no quarto com dois chocolates da recepção.', cons: 'Custo zero para o hotel, mas o casal fica encantado com a lembrança afetiva.', imp: { hospede: 2, qualidade: 1 }, feedback: 'Criatividade e hospitalidade aplicadas de forma simples e barata.' },
+                      { text: 'Ligar para a governança e pedir para fazerem uma dobradura de toalhas (cisnes) na cama.', cons: 'A equipe colabora e o quarto ganha um toque especial rápido.', imp: { equipe: 2, eficiencia: 1 }, feedback: 'Usou a sinergia com outros setores para criar uma surpresa.' }
+                  ], pedag: 'Personalização x Procedimento.' },
+                { time: '17:15', context: 'Lobby cheio.', problem: 'Um grupo de 15 pessoas chega para check-in simultâneo sem aviso prévio da agência.',
+                  options: [
+                      { text: 'Recolher os passaportes de todos, pedir que sentem e processar tudo em lote no sistema.', cons: 'O grupo relaxa junto e você processa a burocracia de forma otimizada e sem fila.', imp: { eficiencia: 2, organizacao: 2 }, feedback: 'Ótima gestão de fluxo (crowd control) e otimização de tempo.' },
+                      { text: 'Chamar mais dois colegas da retaguarda para abrirem mais posições no balcão.', cons: 'O atendimento é diluído e todos são atendidos pessoalmente de forma rápida.', imp: { equipe: 2, eficiencia: 1 }, feedback: 'Demonstrou espírito de liderança ao mobilizar a equipe.' },
+                      { text: 'Oferecer um welcome drink no lobby para distraí-los enquanto atende um a um com calma.', cons: 'A percepção de espera diminui drasticamente e o clima fica festivo.', imp: { hospede: 2, qualidade: 1 }, feedback: 'Utilizou a hospitalidade como ferramenta de distração e acolhimento.' }
+                  ], pedag: 'Gestão de grande volume.' },
+                { time: '18:00', context: 'Checkout.', problem: 'Hóspede discorda de uma cobrança de R$ 20 do frigobar e está com pressa para o aeroporto.',
+                  options: [
+                      { text: 'Isentar a taxa imediatamente para não atrasar o hóspede e garantir um bom final de estadia.', cons: 'O hóspede sai agradecido e não perde o voo. Você lança como cortesia.', imp: { eficiencia: 2, hospede: 2 }, feedback: 'Tomou decisão ágil focada na conveniência do cliente.' },
+                      { text: 'Explicar rapidamente que o consumo foi bipado no sistema, mas oferecer dividir o valor.', cons: 'O hóspede entende a postura profissional, paga a metade e sai rápido.', imp: { organizacao: 2, risco: 1 }, feedback: 'Manteve a postura comercial e buscou um meio-termo rápido.' },
+                      { text: 'Pedir que ele aguarde um minuto, ligar para a governança conferir o quarto.', cons: 'Governança confirma o consumo, hóspede lembra que consumiu e paga.', imp: { equipe: 1, organizacao: 2 }, feedback: 'Apoiou-se no processo e na equipe para validar a informação.' }
+                  ], pedag: 'Conflito de cobrança.' },
+                { time: '19:10', context: 'Balcão.', problem: 'Hóspede idosa perdeu a chave e parece confusa sobre qual é o número do seu quarto.',
+                  options: [
+                      { text: 'Acalmá-la, pedir o documento de identidade com gentileza e emitir uma nova chave.', cons: 'Ela se sente segura com o protocolo e você garante que é a pessoa certa.', imp: { risco: 2, organizacao: 1 }, feedback: 'Seguiu o protocolo de segurança patrimonial rigorosamente.' },
+                      { text: 'Acompanhá-la pessoalmente até o andar provável, ajudando-a a reconhecer o quarto e abrir a porta.', cons: 'Ela fica profundamente grata pelo cuidado pessoal.', imp: { hospede: 3, empatia: 2 }, feedback: 'Atitude de extrema empatia e serviço de excelência.' },
+                      { text: 'Chamar a segurança para acompanhá-la enquanto você verifica o sistema rapidamente.', cons: 'A segurança assume a escolta física e você foca na resolução sistêmica.', imp: { equipe: 2, eficiencia: 1 }, feedback: 'Delegou a tarefa física para focar na agilidade do sistema.' }
+                  ], pedag: 'Acolhimento e Segurança.' },
+                { time: '20:00', context: 'Noite.', problem: 'Hóspede pede dicas de jantar, mas os restaurantes parceiros do hotel já estão fechados.',
+                  options: [
+                      { text: 'Mostrar o cardápio do Room Service, destacando os melhores pratos do Chef do hotel.', cons: 'O hóspede janta no hotel, gerando receita interna e conforto.', imp: { organizacao: 2, qualidade: 1 }, feedback: 'Aproveitou a oportunidade para promover a estrutura interna.' },
+                      { text: 'Pesquisar rapidamente num app de delivery boas opções abertas na região e ajudá-lo a pedir.', cons: 'O hóspede fica maravilhado com a disposição em ajudar fora do escopo.', imp: { hospede: 2, eficiencia: 1 }, feedback: 'Foi além do básico usando tecnologia para resolver a dor do cliente.' },
+                      { text: 'Ligar para um restaurante parceiro e negociar para abrirem uma exceção para o hóspede VIP.', cons: 'O restaurante aceita. Hóspede se sente muito especial.', imp: { equipe: 2, hospede: 2 }, feedback: 'Usou relacionamento comercial externo para encantar.' }
+                  ], pedag: 'Concierge e proatividade.' },
+                { time: '20:50', context: 'Sistema.', problem: 'O software do hotel (PMS) trava completamente bem na hora de imprimir a nota fiscal.',
+                  options: [
+                      { text: 'Preencher um recibo manual numerado com carimbo do hotel para que ele possa ir embora.', cons: 'O hóspede leva o comprovante oficial provisório. A operação não para.', imp: { eficiencia: 2, risco: 2 }, feedback: 'Acionou um plano de contingência analógico eficaz.' },
+                      { text: 'Pegar o e-mail dele e prometer enviar a nota fiscal oficial assim que o sistema voltar.', cons: 'O hóspede sai rápido, confiando no combinado. Você anota para não esquecer.', imp: { hospede: 2, eficiencia: 1 }, feedback: 'Agilizou a vida do cliente e assumiu a responsabilidade posterior.' },
+                      { text: 'Chamar o gerente de plantão para autorizar a saída sem nota e alinhar com a contabilidade.', cons: 'Você se resguarda administrativamente e segue o fluxo hierárquico.', imp: { organizacao: 2, equipe: 1 }, feedback: 'Demonstrou respeito pelas alçadas e processos contábeis.' }
+                  ], pedag: 'Falha de TI (Contingência).' },
+                { time: '21:40', context: 'Fim do Turno.', problem: 'Há uma pendência complexa na recepção que não deu tempo de resolver e o colega da noite chegou.',
+                  options: [
+                      { text: 'Ficar 15 minutos além do horário para resolver a pendência você mesmo.', cons: 'O problema é sanado por quem começou. O colega da noite agradece.', imp: { responsabilidade: 2, qualidade: 1 }, feedback: 'Extremo senso de responsabilidade (Ownership).' },
+                      { text: 'Fazer um logbook (livro de ocorrências) muito detalhado e explicar tudo verbalmente ao colega.', cons: 'O colega assume com total clareza do que precisa ser feito.', imp: { organizacao: 2, equipe: 2 }, feedback: 'Excelente comunicação e passagem de turno (Handover).' },
+                      { text: 'Chamar o colega e resolverem juntos nos primeiros 5 minutos do turno dele.', cons: 'A pendência é resolvida em dupla de forma muito ágil.', imp: { equipe: 2, eficiencia: 2 }, feedback: 'Estimulou o trabalho em equipe e a agilidade na transição.' }
+                  ], pedag: 'Passagem de turno.' }
+            ],
+            reservas: [
+                { time: '09:00', context: 'E-mails.', problem: 'Reserva via OTA (agência) entrou sem dados do cartão de crédito para garantia.',
+                  options: [
+                      { text: 'Entrar em contato com a agência cobrando os dados e dar um prazo limite.', cons: 'Mantém a formalidade B2B e garante a segurança da reserva.', imp: { organizacao: 2, risco: 1 }, feedback: 'Cumpriu a regra com foco na segurança financeira.' },
+                      { text: 'Manter a reserva confirmada e cobrar o hóspede diretamente no momento do check-in.', cons: 'Agiliza o processo interno, confiando na chegada do hóspede.', imp: { eficiencia: 2, hospede: 1 }, feedback: 'Tomou risco calculado para otimizar tempo.' },
+                      { text: 'Enviar um e-mail acolhedor ao hóspede pedindo a confirmação via link seguro.', cons: 'Gera contato direto com o hóspede antes da chegada.', imp: { hospede: 2, qualidade: 1 }, feedback: 'Aproveitou a falha para iniciar o relacionamento com o cliente.' }
+                  ], pedag: 'Gestão de Garantias.' },
+                { time: '10:00', context: 'Telefone.', problem: 'Cliente quer alterar data de uma tarifa que pelas regras é estritamente não-reembolsável.',
+                  options: [
+                      { text: 'Explicar a política com empatia e sugerir o pagamento de uma pequena taxa de remarcação.', cons: 'Hotel não perde receita e cliente sente que houve uma negociação justa.', imp: { organizacao: 2, risco: 1 }, feedback: 'Protegeu a regra propondo um meio-termo comercial.' },
+                      { text: 'Aprovar a alteração sem custos para fidelizar o cliente que viaja sempre a negócios.', cons: 'O cliente fica extremamente grato e promete voltar mais vezes.', imp: { hospede: 2, equipe: 1 }, feedback: 'Visão de longo prazo focada na fidelização.' },
+                      { text: 'Oferecer que ele mantenha a data, mas incluir um benefício extra (jantar) se ele vier.', cons: 'Tenta salvar a data original agregando valor à tarifa cobrada.', imp: { eficiencia: 2, qualidade: 1 }, feedback: 'Uso de criatividade (add-ons) para manter a reserva.' }
+                  ], pedag: 'Políticas Tarifárias.' },
+                { time: '11:15', context: 'Chat.', problem: 'Noivo quer reservar 15 quartos, mas pede um desconto agressivo que o sistema não aprova.',
+                  options: [
+                      { text: 'Encaminhar o pedido para a gerência de vendas para análise de Revenue Management.', cons: 'A gerência analisa a viabilidade com base na ocupação geral.', imp: { organizacao: 2, equipe: 2 }, feedback: 'Respeitou fluxos de aprovação e visão estratégica.' },
+                      { text: 'Propor o valor de tabela, mas incluir cortesia no quarto dos noivos (late checkout/upgrade).', cons: 'O noivo acha a troca vantajosa e fecha negócio.', imp: { hospede: 2, eficiencia: 2 }, feedback: 'Negociação inteligente sem mexer no preço base.' },
+                      { text: 'Bloquear os 15 quartos temporariamente para ele não perder enquanto negociam.', cons: 'Garante o espaço na agenda, dando tranquilidade para ambas as partes.', imp: { eficiencia: 2, risco: 1 }, feedback: 'Ação rápida para "segurar" a venda potencial.' }
+                  ], pedag: 'Negociação de Grupos.' },
+                { time: '12:30', context: 'Sistema.', problem: 'Você nota que o site do hotel está vendendo o quarto mais barato que na Booking.com.',
+                  options: [
+                      { text: 'Ajustar o preço no site imediatamente para igualar e avisar o gestor.', cons: 'A paridade tarifária é corrigida antes de gerar problemas com a OTA.', imp: { organizacao: 2, risco: 2 }, feedback: 'Ação rápida de correção de compliance comercial.' },
+                      { text: 'Deixar como está para incentivar a venda direta (sem comissão).', cons: 'O hotel lucra mais nas vendas diretas naquele momento.', imp: { eficiencia: 2, qualidade: 1 }, feedback: 'Estratégia ousada focada em rentabilidade imediata.' },
+                      { text: 'Pausar as vendas do site por 5 minutos para investigar onde ocorreu o erro de cadastro.', cons: 'Previne novas compras erradas enquanto a raiz do problema é mapeada.', imp: { equipe: 2, organizacao: 1 }, feedback: 'Foco na investigação e prevenção de erros sistêmicos.' }
+                  ], pedag: 'Paridade Tarifária.' },
+                { time: '14:00', context: 'Relatório.', problem: 'Hotel com 98% de ocupação. Há 2 reservas repetidas no mesmo nome para o mesmo dia.',
+                  options: [
+                      { text: 'Ligar para o cliente para confirmar se ele realmente precisa de dois quartos.', cons: 'Cliente confirma que foi erro do site e cancela um. Quarto liberado para venda!', imp: { hospede: 2, organizacao: 2 }, feedback: 'Comunicação proativa que evitou no-show e recuperou inventário.' },
+                      { text: 'Manter as duas reservas garantidas, pois as regras dizem para não mexer sem pedido.', cons: 'Se o cliente aparecer com família, está tudo certo. Se não, cobra no-show.', imp: { risco: 2, organizacao: 1 }, feedback: 'Postura conservadora, focada na garantia da receita.' },
+                      { text: 'Avisar a Recepção para ficar alerta durante o check-in e resolver na hora.', cons: 'Repassa a responsabilidade para a linha de frente, mas avisa preventivamente.', imp: { equipe: 2, eficiencia: 1 }, feedback: 'Delegação com aviso prévio (comunicação intersetorial).' }
+                  ], pedag: 'Duplicidade e Ocupação.' },
+                { time: '15:20', context: 'WhatsApp.', problem: 'Cliente fiel pede reserva para hoje, mas o hotel está 100% lotado.',
+                  options: [
+                      { text: 'Colocá-lo como prioridade absoluta na lista de espera e monitorar cancelamentos.', cons: 'Há um cancelamento às 16h e você garante o quarto para ele.', imp: { hospede: 2, organizacao: 2 }, feedback: 'Gestão impecável de fila de espera e fidelização.' },
+                      { text: 'Indicar um hotel parceiro de mesma categoria e fazer a reserva para ele lá.', cons: 'Ele fica surpreso com o cuidado de você resolver o problema dele externamente.', imp: { hospede: 3, empatia: 1 }, feedback: 'Hospitalidade nível máximo (Concierge atitude).' },
+                      { text: 'Falar com a Manutenção para ver se conseguem liberar um quarto bloqueado (com defeito leve).', cons: 'Manutenção arruma o quarto correndo e o cliente é acomodado.', imp: { equipe: 2, eficiencia: 2 }, feedback: 'Sinergia com outro setor para criar disponibilidade.' }
+                  ], pedag: 'Overbooking / Lotado.' },
+                { time: '16:15', context: 'E-mail.', problem: 'Pedido de reserva com pet. O hotel é Pet Friendly, mas os quartos adequados estão ocupados.',
+                  options: [
+                      { text: 'Informar que aceitam pets, mas que para aquela data específica não há quarto adaptado.', cons: 'Transparência total, evitando problemas de alergia no futuro.', imp: { organizacao: 2, risco: 2 }, feedback: 'Protegeu as regras de higienização e infraestrutura.' },
+                      { text: 'Oferecer um quarto normal, agendando uma limpeza profunda extra no checkout.', cons: 'Cliente fica com o pet, hotel agenda o custo extra da limpeza.', imp: { eficiencia: 2, hospede: 2 }, feedback: 'Acomodou a necessidade do cliente flexibilizando a operação.' },
+                      { text: 'Sugerir que o hóspede venha, mas que o pet fique numa creche parceira próxima ao hotel.', cons: 'Oferece uma alternativa prática que mantém a qualidade do quarto.', imp: { qualidade: 2, equipe: 1 }, feedback: 'Trouxe solução externa criativa para contornar limitação física.' }
+                  ], pedag: 'Políticas Específicas.' },
+                { time: '17:00', context: 'Sistema.', problem: 'Agência solicitou cancelamento ontem, mas o colega esqueceu de processar e gerou cobrança (No-show).',
+                  options: [
+                      { text: 'Estornar a cobrança imediatamente, assumir o erro para a agência e pedir desculpas.', cons: 'Agência percebe a honestidade e a confiança comercial é mantida.', imp: { organizacao: 2, equipe: 1 }, feedback: 'Transparência B2B e correção administrativa correta.' },
+                      { text: 'Avisar o colega para que ele mesmo corrija e aprenda com a falha (Feedback).', cons: 'O colega corrige e o processo serve de treinamento prático.', imp: { equipe: 2, qualidade: 1 }, feedback: 'Postura focada no desenvolvimento e aprendizado da equipe.' },
+                      { text: 'Deixar o valor como crédito para a próxima reserva da agência, simplificando o fluxo financeiro.', cons: 'Resolve contabilmente sem precisar lidar com burocracia de estorno.', imp: { eficiencia: 2, risco: 1 }, feedback: 'Solução financeira rápida e pragmática.' }
+                  ], pedag: 'Erro Interno.' },
+                { time: '17:45', context: 'Telefone.', problem: 'Cliente quer o quarto X específico porque tem vista para o mar, mas você não pode garantir numeração.',
+                  options: [
+                      { text: 'Explicar que o sistema não bloqueia número, mas colocar observação de "Alta Prioridade".', cons: 'Alinha a expectativa de forma realista, sem fazer promessas falsas.', imp: { organizacao: 2, risco: 2 }, feedback: 'Gestão madura de expectativas e procedimentos.' },
+                      { text: 'Ir pessoalmente à Recepção negociar o bloqueio manual daquele quarto na prancheta.', cons: 'A recepção entende e segura o quarto fisicamente para aquele cliente.', imp: { equipe: 2, eficiencia: 2 }, feedback: 'Comunicação direta intersetorial para garantir a promessa.' },
+                      { text: 'Prometer o quarto para fechar a venda e torcer para estar disponível no dia.', cons: 'Venda realizada rápido. Vai dar trabalho no dia do check-in.', imp: { eficiencia: 2, qualidade: 1 }, feedback: 'Focou no fechamento da venda (comportamento comercial arriscado).' }
+                  ], pedag: 'Promessas Comerciais.' },
+                { time: '18:30', context: 'Fim do Turno.', problem: 'Entrou uma reserva VIP agora, para chegar amanhã cedo.',
+                  options: [
+                      { text: 'Inserir todas as tags de VIP no sistema para que a Recepção e Governança vejam amanhã.', cons: 'O fluxo via sistema garante que a informação está registrada.', imp: { organizacao: 2, qualidade: 1 }, feedback: 'Confiança na eficiência do sistema PMS.' },
+                      { text: 'Passar a mão no telefone, ligar para a governança e já pedir o kit VIP no quarto agora.', cons: 'O quarto já fica montado hoje, sem riscos de correria amanhã.', imp: { eficiencia: 2, equipe: 2 }, feedback: 'Ação preventiva e proativa que adianta o trabalho da equipe.' },
+                      { text: 'Enviar um WhatsApp para a gerente do hotel avisando da chegada importante.', cons: 'A gerência fica ciente e pode planejar receber o VIP pessoalmente.', imp: { equipe: 2, risco: 1 }, feedback: 'Visão política e de relacionamento executivo.' }
+                  ], pedag: 'Comunicação VIP.' }
+            ],
+            governanca: [
+                { time: '08:30', context: 'Corredor.', problem: 'O carrinho de limpeza está bloqueando a passagem de um hóspede com carrinho de bebê.',
+                  options: [
+                      { text: 'Parar o que está fazendo, puxar o carrinho para o recuo e ajudar a passar com um sorriso.', cons: 'O hóspede agradece a gentileza e o cuidado com o bebê.', imp: { hospede: 3, equipe: 1 }, feedback: 'Excelente postura de hospitalidade e empatia nos corredores.' },
+                      { text: 'Reorganizar o carrinho de forma mais compacta para ocupar apenas um lado do corredor sempre.', cons: 'Resolve o problema definitivo para o dia todo, seguindo padrão visual.', imp: { organizacao: 2, qualidade: 2 }, feedback: 'Ação estrutural focada em organização espacial.' },
+                      { text: 'Pedir desculpas rapidamente e puxar apenas o suficiente para a passagem.', cons: 'Rápido e prático, você não perde o ritmo da limpeza do andar.', imp: { eficiencia: 2, hospede: 1 }, feedback: 'Focou na rapidez para voltar imediatamente à rotina de limpeza.' }
+                  ], pedag: 'Gestão de Espaço.' },
+                { time: '09:45', context: 'Quarto 302.', problem: 'Ao arrumar a cama, você percebe que o lençol limpo tem um pequeno furinho no canto.',
+                  options: [
+                      { text: 'Retirar o lençol, descer até a rouparia para trocar, mesmo demorando 10 minutos a mais.', cons: 'O quarto fica impecável. Você garante o padrão 5 estrelas.', imp: { organizacao: 2, qualidade: 2 }, feedback: 'Foco absoluto no Padrão de Qualidade.' },
+                      { text: 'Colocar o lençol com o furo para baixo/escondido para não atrasar a fila de quartos.', cons: 'Ganha tempo. O hóspede provavelmente não notará o micro-furo.', imp: { eficiencia: 2, risco: 1 }, feedback: 'Pragmatismo para lidar com alta pressão de tempo (velocidade).' },
+                      { text: 'Pedir para a colega do andar trazer um lençol reserva que ela tem no carrinho.', cons: 'Troca rápida graças ao bom relacionamento e comunicação com a equipe.', imp: { equipe: 3, eficiencia: 2 }, feedback: 'Uso de trabalho em equipe para resolver falhas logísticas.' }
+                  ], pedag: 'Controle de Qualidade.' },
+                { time: '11:10', context: 'Quarto 405.', problem: 'Hóspede deixou muito dinheiro vivo espalhado em cima da mesa (quarto ocupado).',
+                  options: [
+                      { text: 'Limpar o quarto sem tocar na mesa, deixando o dinheiro exatamente como estava.', cons: 'Evita qualquer suspeita e respeita a organização pessoal do hóspede.', imp: { risco: 2, organizacao: 2 }, feedback: 'Postura corretíssima de prevenção de riscos patrimoniais.' },
+                      { text: 'Arrumar o dinheiro empilhado cuidadosamente junto aos pertences para ficar mais bonito.', cons: 'O hóspede volta, vê a organização e acha o cuidado interessante.', imp: { qualidade: 2, hospede: 1 }, feedback: 'Demonstrou zelo e capricho, embora com leve risco de interpretação.' },
+                      { text: 'Chamar a supervisora no rádio para entrar junto e ser testemunha da limpeza no local.', cons: 'Limpeza feita sob dupla checagem, segurança total para o funcionário.', imp: { equipe: 2, risco: 2 }, feedback: 'Acionou o protocolo de segurança da equipe de governança.' }
+                  ], pedag: 'Itens de Valor.' },
+                { time: '12:30', context: 'Rádio.', problem: 'A recepção avisa que o VIP chegou mais cedo, mas o quarto dele só seria limpo à tarde.',
+                  options: [
+                      { text: 'Pausar o quarto atual, correr para o quarto VIP e limpá-lo sozinho em tempo recorde.', cons: 'Quarto limpo super rápido, exigindo grande esforço físico seu.', imp: { eficiencia: 3, qualidade: 1 }, feedback: 'Alta capacidade de resposta e esforço individual.' },
+                      { text: 'Convocar duas colegas pelo rádio para um "mutirão" de 10 minutos no quarto VIP.', cons: 'O quarto é feito muito rápido e com padrão alto pela divisão de tarefas.', imp: { equipe: 3, eficiencia: 2 }, feedback: 'Excelente uso de força-tarefa em equipe.' },
+                      { text: 'Oferecer outro quarto já limpo de mesma categoria para a recepção alterar no sistema.', cons: 'Solução logística que não exige correria da equipe.', imp: { organizacao: 2, risco: 1 }, feedback: 'Visão sistêmica: alterou o planejamento em vez de forçar a operação.' }
+                  ], pedag: 'Prioridade VIP.' },
+                { time: '14:00', context: 'Inspeção.', problem: 'O frigobar está desligado e formou uma poça d’água no carpete do quarto.',
+                  options: [
+                      { text: 'Secar com toalhas, religar o frigobar e colocar um aviso para o hóspede sobre o gelo.', cons: 'Contenção rápida. O quarto volta à normalidade sem acionar outros.', imp: { eficiencia: 2, hospede: 1 }, feedback: 'Ação corretiva imediata e independente.' },
+                      { text: 'Acionar a Manutenção no rádio para checar se há curto-circuito na tomada.', cons: 'A manutenção avalia que foi só a tomada frouxa. Prevenção de acidentes.', imp: { organizacao: 2, equipe: 2 }, feedback: 'Prevenção de riscos acionando o setor técnico adequado.' },
+                      { text: 'Solicitar aspirador de água à supervisão para secar o carpete profundamente.', cons: 'O carpete fica perfeitamente seco, evitando cheiro de mofo no futuro.', imp: { qualidade: 3, organizacao: 1 }, feedback: 'Foco na preservação do patrimônio do hotel a longo prazo.' }
+                  ], pedag: 'Dano Material.' },
+                { time: '15:15', context: 'Andar 5.', problem: 'Hóspede abre a porta de pijama e pede mais toalhas, mas seu carrinho está sem toalhas limpas.',
+                  options: [
+                      { text: 'Pedir 5 minutos, descer à rouparia, buscar a toalha e entregar no quarto.', cons: 'Hóspede recebe a toalha nova em mãos. Você cumpriu a promessa.', imp: { hospede: 2, qualidade: 2 }, feedback: 'Hospitalidade clássica, mesmo com custo de tempo de deslocamento.' },
+                      { text: 'Chamar um "Mensageiro" (Bellboy) pelo rádio para subir com a toalha para o hóspede.', cons: 'A toalha chega e você não para a sua sequência de limpeza no andar.', imp: { eficiencia: 2, equipe: 2 }, feedback: 'Delegação e uso da equipe de apoio para manter o ritmo.' },
+                      { text: 'Pegar uma toalha limpa que você já havia colocado no quarto vazio ao lado.', cons: 'Resolução em 10 segundos, mas você precisará repor o outro quarto depois.', imp: { eficiencia: 3, risco: 1 }, feedback: 'Criatividade e pragmatismo para uma solução instantânea.' }
+                  ], pedag: 'Requisição Direta.' },
+                { time: '16:30', context: 'Quarto 510.', problem: 'Você encontra um tablet esquecido embaixo do travesseiro de um hóspede que fez checkout.',
+                  options: [
+                      { text: 'Descer imediatamente à Recepção para entregar, com chance do hóspede ainda estar no lobby.', cons: 'O hóspede estava saindo do hotel, recebe o tablet e fica encantado.', imp: { hospede: 3, eficiencia: 2 }, feedback: 'Agilidade que gerou uma experiência de resgate incrível.' },
+                      { text: 'Registrar no formulário de "Achados e Perdidos", etiquetar e colocar no cofre do setor.', cons: 'Processo oficial cumprido. O tablet fica seguro e rastreável.', imp: { organizacao: 3, risco: 2 }, feedback: 'Foco impecável na conformidade (compliance) administrativa.' },
+                      { text: 'Entregar para o Supervisor de Governança no corredor para ele dar o andamento oficial.', cons: 'Você segue trabalhando enquanto a liderança assume a burocracia.', imp: { equipe: 2, eficiencia: 1 }, feedback: 'Respeito à hierarquia e otimização do próprio tempo.' }
+                  ], pedag: 'Achados e Perdidos.' },
+                { time: '17:45', context: 'Rotina.', problem: 'O aspirador de pó quebrou e faltam 3 quartos para terminar o andar.',
+                  options: [
+                      { text: 'Varrer os quartos com vassoura de forma caprichada para não atrasar a liberação.', cons: 'Os quartos são liberados no prazo e a recepção não trava check-ins.', imp: { eficiencia: 2, risco: 1 }, feedback: 'Plano B executado com sucesso para manter a operação rodando.' },
+                      { text: 'Descer ao almoxarifado, abrir um chamado técnico e pegar um aspirador reserva.', cons: 'Demora 15 minutos, mas o padrão de aspiração é mantido perfeito.', imp: { organizacao: 2, qualidade: 2 }, feedback: 'Preferiu atrasar um pouco para manter a qualidade estrutural e avisar a manutenção.' },
+                      { text: 'Emprestar o aspirador do colega do andar de baixo apenas para esses 3 quartos.', cons: 'Comunicação entre equipe resolve o problema sem burocracia.', imp: { equipe: 3, eficiencia: 2 }, feedback: 'Uso inteligente do relacionamento e dos recursos da equipe.' }
+                  ], pedag: 'Falha de Equipamento.' },
+                { time: '18:50', context: 'Check-out.', problem: 'O quarto cheira fortemente a cigarro, mas o hotel é estritamente não-fumante.',
+                  options: [
+                      { text: 'Avisar a Recepção IMEDIATAMENTE no rádio para aplicarem a multa antes do hóspede ir embora.', cons: 'A recepção cobra a taxa. O hotel é ressarcido pelo dano.', imp: { organizacao: 2, risco: 2 }, feedback: 'Comunicação imediata que protegeu as finanças do hotel.' },
+                      { text: 'Bloquear o quarto no sistema e já ligar o equipamento purificador de ozônio (O3).', cons: 'O cheiro sai rápido. O quarto poderá ser vendido ainda hoje.', imp: { eficiencia: 3, qualidade: 2 }, feedback: 'Ação corretiva focada em devolver a disponibilidade do quarto rápido.' },
+                      { text: 'Anotar no relatório para a supervisão avaliar depois, focando em limpar a cinza.', cons: 'A limpeza é feita com calma, mas o hóspede sai sem ser cobrado.', imp: { equipe: 1, organizacao: 1 }, feedback: 'Deixou a avaliação do conflito para a liderança superior.' }
+                  ], pedag: 'Infração de Regra.' },
+                { time: '20:00', context: 'Fim do Turno.', problem: 'Um colega novato está muito atrasado e não vai conseguir terminar o andar dele a tempo.',
+                  options: [
+                      { text: 'Ir até o andar dele e ajudá-lo a finalizar os últimos dois quartos antes de ir embora.', cons: 'Ambos terminam o turno juntos e o novato se sente muito grato.', imp: { equipe: 3, empatia: 2 }, feedback: 'Altíssimo espírito de companheirismo e apoio ao colega.' },
+                      { text: 'Avisar o supervisor sobre o atraso do colega para que o turno da noite assuma os quartos.', cons: 'A gestão é informada e reorganiza a escala para cobrir o buraco.', imp: { organizacao: 2, risco: 1 }, feedback: 'Comunicação oficial à gerência para alocação de recursos.' },
+                      { text: 'Dar dicas de como ele pode limpar mais rápido da próxima vez (treinamento rápido).', cons: 'O colega melhora sua técnica para o dia seguinte, embora atrase hoje.', imp: { qualidade: 2, equipe: 1 }, feedback: 'Focou no desenvolvimento e mentoria (Treinamento on-the-job).' }
+                  ], pedag: 'Apoio à equipe.' }
+            ],
+            alimentos: [
+                { time: '07:30', context: 'Café da manhã.', problem: 'A máquina de café quebrou e há uma fila de hóspedes esperando para se servir.',
+                  options: [
+                      { text: 'Montar imediatamente jarras térmicas com café coado da cozinha para atender a fila.', cons: 'Os hóspedes tomam café rápido, sem frescura e a fila some.', imp: { eficiencia: 3, hospede: 2 }, feedback: 'Ação corretiva rápida de contingência.' },
+                      { text: 'Avisar os hóspedes com um sorriso, pedir desculpas e oferecer serviço de chá na mesa.', cons: 'Alguns aceitam chá, a tensão diminui pela sua simpatia.', imp: { hospede: 2, empatia: 1 }, feedback: 'Gerenciou a frustração com hospitalidade e alternativas.' },
+                      { text: 'Isolar a máquina com uma placa oficial e abrir OS para manutenção urgente.', cons: 'Os hóspedes entendem o aviso visual e o conserto é iniciado.', imp: { organizacao: 2, risco: 1 }, feedback: 'Foco em procedimentos padrão e comunicação visual.' }
+                  ], pedag: 'Equipamento e Movimento.' },
+                { time: '12:45', context: 'Restaurante.', problem: 'O garçom derrubou suco no paletó de um cliente durante o almoço executivo.',
+                  options: [
+                      { text: 'Pedir desculpas profusas, limpar na hora com pano seco e dar o almoço como cortesia.', cons: 'O cliente se acalma devido à cortesia financeira imediata.', imp: { eficiencia: 2, hospede: 2 }, feedback: 'Service Recovery (Recuperação de Serviço) rápido.' },
+                      { text: 'Oferecer que o hotel pague a lavanderia expressa do paletó para entregá-lo perfeito à tarde.', cons: 'O cliente sente que o problema estrutural foi resolvido profissionalmente.', imp: { qualidade: 3, organizacao: 1 }, feedback: 'Resolução elegante e focada na qualidade da entrega.' },
+                      { text: 'Chamar o Maître/Gerente para conduzir o pedido de desculpas e a negociação.', cons: 'O cliente se sente importante ao ser atendido pela gerência.', imp: { equipe: 2, risco: 1 }, feedback: 'Acionou a liderança adequadamente para uma crise de atendimento.' }
+                  ], pedag: 'Acidente de serviço.' },
+                { time: '13:30', context: 'Cozinha.', problem: 'Acabou o salmão, que é o prato do dia, e já há 3 pedidos lançados no sistema.',
+                  options: [
+                      { text: 'Ir até as 3 mesas, explicar e oferecer o filé mignon pelo preço do salmão (upgrade).', cons: 'Os clientes adoram a troca por um prato mais caro e saem felizes.', imp: { hospede: 3, empatia: 1 }, feedback: 'Focou no cliente, absorvendo o custo como investimento.' },
+                      { text: 'Pedir ao Chef para criar um prato alternativo com peixe branco "Exclusivo" para aquelas mesas.', cons: 'Clientes se sentem VIPs provando um prato "fora do cardápio".', imp: { equipe: 2, criatividade: 2 }, feedback: 'Solução criativa usando as habilidades da cozinha (Sinergia).' },
+                      { text: 'Avisar os clientes, cancelar na comanda e perguntar se desejam pedir outra coisa.', cons: 'O processo financeiro fica correto e o garçom segue a rotina.', imp: { organizacao: 2, eficiencia: 1 }, feedback: 'Processo correto, sem "inventar moda".' }
+                  ], pedag: 'Falta de Estoque.' },
+                { time: '15:00', context: 'Eventos.', problem: 'O coffee break estava agendado para 15h30, mas o grupo saiu para o intervalo 30 minutos mais cedo.',
+                  options: [
+                      { text: 'Pedir 5 minutos, chamar toda a equipe (até da cozinha) para montar as mesas em modo "Mutirão".', cons: 'A comida é servida quase na hora. Cliente impressionado.', imp: { equipe: 3, eficiencia: 3 }, feedback: 'Alta capacidade de mobilização de equipe (Agilidade).' },
+                      { text: 'Começar a servir as bebidas e sucos enquanto as comidas chegam aos poucos.', cons: 'Os participantes já se refrescam e não percebem que a comida atrasou.', imp: { hospede: 2, criatividade: 1 }, feedback: 'Gerenciou a expectativa distraindo com o serviço parcial.' },
+                      { text: 'Informar ao organizador que a estrutura oficial será liberada exatamente às 15h30.', cons: 'O organizador pede desculpas ao hotel e segura os participantes.', imp: { organizacao: 2, risco: 1 }, feedback: 'Postura firme na defesa dos prazos contratuais.' }
+                  ], pedag: 'Alteração de Horário.' },
+                { time: '16:15', context: 'Piscina.', problem: 'Hóspede pede uma caipirinha com uma fruta exótica que o hotel não tem no bar no momento.',
+                  options: [
+                      { text: 'Explicar com simpatia que não tem a fruta, mas preparar um drink degustação grátis com outra fruta parecida.', cons: 'O hóspede adora o mimo e acaba comprando 3 caipirinhas dessa nova.', imp: { hospede: 3, qualidade: 2 }, feedback: 'Usou degustação como técnica de venda (Hospitalidade).' },
+                      { text: 'Sugerir o "Drink Assinatura do Hotel", elogiando os ingredientes exclusivos da casa.', cons: 'Faz uma venda consultiva, direcionando para o estoque existente.', imp: { organizacao: 2, eficiencia: 1 }, feedback: 'Redirecionamento focado em Vendas (Upselling/Cross-selling).' },
+                      { text: 'Pedir ao estoquista para correr no hortifruti ao lado do hotel para comprar a fruta.', cons: 'Demora um pouco, mas entrega o desejo exato do cliente.', imp: { equipe: 2, qualidade: 1 }, feedback: 'Esforço logístico para atendimento hiper-personalizado.' }
+                  ], pedag: 'Pedido fora do cardápio.' },
+                { time: '18:30', context: 'Room Service.', problem: 'Pedido do quarto 410 demorou porque o ramal estava ocupado, a comida está pronta mas esfriando.',
+                  options: [
+                      { text: 'Subir correndo pelas escadas para entregar antes que esfrie totalmente.', cons: 'Chega ofegante, mas a comida está morna e o cliente aceita.', imp: { eficiencia: 3, risco: 1 }, feedback: 'Esforço físico extremo para salvar o tempo de entrega.' },
+                      { text: 'Pedir para a cozinha repassar o prato no forno rápido para garantir que chegue quente.', cons: 'Atrasa 3 minutos, mas a qualidade térmica é preservada.', imp: { qualidade: 3, organizacao: 1 }, feedback: 'Foco na qualidade gastronômica em detrimento de alguns minutos.' },
+                      { text: 'Ligar para o quarto, pedir desculpas pela demora e avisar que o prato já está subindo.', cons: 'O cliente já fica esperando na porta de bom humor.', imp: { hospede: 2, organizacao: 1 }, feedback: 'Gestão da expectativa via comunicação (Follow-up).' }
+                  ], pedag: 'Controle de Tempo e Qualidade.' },
+                { time: '19:45', context: 'Salão.', problem: 'Um cliente está reclamando em voz alta que a carne passou do ponto, chamando atenção das mesas.',
+                  options: [
+                      { text: 'Ir à mesa, falar baixinho, retirar o prato imediatamente e prometer um novo em 10 minutos.', cons: 'O prato sai da vista, a reclamação para e a cozinha refaz rápido.', imp: { eficiencia: 3, hospede: 2 }, feedback: 'Contenção rápida de crise no salão.' },
+                      { text: 'Ouvir atentamente, dar razão a ele e oferecer uma sobremesa cortesia pela falha.', cons: 'Ele se sente ouvido, validado e aceita a sobremesa feliz.', imp: { empatia: 2, hospede: 2 }, feedback: 'Uso de empatia e compensação psicológica.' },
+                      { text: 'Trazer o Chef de Cozinha à mesa para explicar o preparo e oferecer alternativas.', cons: 'O cliente adora a atenção do Chef e a situação vira uma conversa agradável.', imp: { equipe: 3, qualidade: 2 }, feedback: 'Uso da autoridade técnica (Chef) para reverter a percepção.' }
+                  ], pedag: 'Gestão de Reclamação (Salão).' },
+                { time: '21:00', context: 'Bar.', problem: 'Um grupo grande começou a juntar as mesas do bar bloqueando a saída de emergência.',
+                  options: [
+                      { text: 'Pedir educadamente que voltem as mesas para manter o corredor livre por segurança.', cons: 'Eles resmungam, mas acatam e o risco é neutralizado.', imp: { risco: 3, organizacao: 2 }, feedback: 'Postura assertiva focada inteiramente na Segurança.' },
+                      { text: 'Ajudar a juntar as mesas em outro canto mais afastado, conduzindo o grupo.', cons: 'Eles ficam juntos, o barulho é afastado e a porta é liberada.', imp: { hospede: 2, eficiencia: 2 }, feedback: 'Resolveu o problema da segurança melhorando a logística deles.' },
+                      { text: 'Chamar a segurança do hotel para intervir e realocar os móveis do bar.', cons: 'A segurança resolve sem você precisar se desgastar com o cliente.', imp: { equipe: 2, organizacao: 1 }, feedback: 'Delegou para a equipe responsável por normas e ordem.' }
+                  ], pedag: 'Segurança vs Conveniência.' },
+                { time: '22:30', context: 'Fechamento.', problem: 'Restaurante fechou às 22h, mas um casal chegou de voo atrasado implorando por comida quente.',
+                  options: [
+                      { text: 'Avisar a cozinha para fazer dois pratos de massa rápida (10 min) como exceção absoluta.', cons: 'A equipe da cozinha faz rápido, o casal janta e a equipe vai embora.', imp: { hospede: 3, equipe: 1 }, feedback: 'Excelente flexibilidade e leitura da necessidade humana.' },
+                      { text: 'Informar que a cozinha fechou, mas montar uma tábua de frios generosa que não requer fogão.', cons: 'Garante uma refeição excelente sem exigir reabrir a cozinha.', imp: { eficiencia: 2, criatividade: 2 }, feedback: 'Solução inteligente, ágil e que não gera hora extra na cozinha.' },
+                      { text: 'Explicar com educação que encerrou, mas oferecer snacks do frigobar ou pedir delivery.', cons: 'O procedimento é mantido e o casal não dorme com fome.', imp: { organizacao: 2, risco: 1 }, feedback: 'Cumpriu a regra com educação, oferecendo paliativos.' }
+                  ], pedag: 'Flexibilidade de Horário.' },
+                { time: '23:15', context: 'Cozinha.', problem: 'No inventário de fechamento, sobrou muita salada de frutas que vai estragar amanhã cedo.',
+                  options: [
+                      { text: 'Distribuir em copinhos e oferecer como cortesia aos hóspedes que ainda estão no bar/lobby.', cons: 'Hóspedes recebem "mimo da madrugada" e o desperdício é zerado.', imp: { hospede: 3, criatividade: 2 }, feedback: 'Transformou desperdício em ferramenta de encantamento.' },
+                      { text: 'Levar para o refeitório dos funcionários para a equipe do turno da noite comer.', cons: 'A equipe da madrugada se sente prestigiada com o lanche extra.', imp: { equipe: 3, empatia: 1 }, feedback: 'Uso de recursos para motivação da equipe interna.' },
+                      { text: 'Lançar no sistema como quebra/desperdício para manter o controle de custos real.', cons: 'A contabilidade fica perfeita, mas o alimento é descartado.', imp: { organizacao: 3, risco: 1 }, feedback: 'Foco no controle rigoroso de Food & Beverage (F&B).' }
+                  ], pedag: 'Desperdício e Inventário.' }
+            ],
+            manutencao: [
+                { time: '08:00', context: 'Ordem de Serviço.', problem: 'Vazamento na torneira de um quarto vazio. Pode trocar a borracha (R$ 2) ou a torneira toda (R$ 150).',
+                  options: [
+                      { text: 'Trocar apenas a borracha, limpar o arejador e testar a vazão.', cons: 'Vazamento sanado com custo quase zero. A torneira volta a brilhar.', imp: { eficiencia: 3, organizacao: 2 }, feedback: 'Eficiência financeira e destreza técnica.' },
+                      { text: 'Trocar a torneira inteira para ter certeza que não dará problema pelos próximos anos.', cons: 'Investimento alto, mas garantia de vida útil longa da peça.', imp: { qualidade: 2, risco: 2 }, feedback: 'Foco na durabilidade estrutural a longo prazo.' },
+                      { text: 'Avisar a Governança para fechar o registro enquanto você vai comprar peças mais baratas.', cons: 'Evita desperdício de água enquanto busca o melhor preço.', imp: { equipe: 2, organizacao: 1 }, feedback: 'Trabalho em conjunto com Governança para mitigação temporária.' }
+                  ], pedag: 'Gestão de Recursos.' },
+                { time: '09:30', context: 'Rádio.', problem: 'O som da área da piscina parou de funcionar e o recreador está pedindo ajuda urgente.',
+                  options: [
+                      { text: 'Ir lá correndo, descobrir que era um cabo solto e conectar no meio da atividade.', cons: 'O som volta em 1 minuto. O recreador agradece publicamente.', imp: { eficiencia: 3, equipe: 2 }, feedback: 'Atendimento de alta velocidade apoiando a linha de frente.' },
+                      { text: 'Pedir ao recreador que use a caixa de som portátil (backup) enquanto você testa os fios.', cons: 'A atividade não para e você tem calma para diagnosticar o rack de som.', imp: { organizacao: 2, risco: 1 }, feedback: 'Acionou contingência para trabalhar com segurança técnica.' },
+                      { text: 'Passar no rádio instruções simples para o recreador verificar a tomada antes de você ir.', cons: 'O próprio recreador resolve ao empurrar o plug. Evitou deslocamento.', imp: { equipe: 2, eficiencia: 2 }, feedback: 'Delegou a triagem básica com sucesso.' }
+                  ], pedag: 'Suporte à Operação.' },
+                { time: '11:00', context: 'Preventiva.', problem: 'É dia de limpar o filtro da piscina, mas ela está cheia de crianças brincando felizes.',
+                  options: [
+                      { text: 'Conversar com o setor de Lazer para desviar as crianças com uma brincadeira na quadra.', cons: 'A piscina esvazia, você faz o serviço e a água fica limpa para amanhã.', imp: { equipe: 3, organizacao: 2 }, feedback: 'Sinergia intersetorial e planejamento integrado.' },
+                      { text: 'Realizar apenas uma limpeza superficial nas bordas agora e adiar o filtro para a madrugada.', cons: 'O lazer continua intacto. O serviço pesado é feito sem hóspedes.', imp: { hospede: 3, flexibilidade: 1 }, feedback: 'Flexibilidade técnica para não interromper a experiência do hóspede.' },
+                      { text: 'Isolar 50% da piscina com boias e fazer o serviço em uma metade de cada vez.', cons: 'Permite o uso parcial enquanto cumpre o cronograma de manutenção.', imp: { eficiencia: 2, risco: 2 }, feedback: 'Gestão de espaço engenhosa e cumprimento de cronograma.' }
+                  ], pedag: 'Manutenção vs Hóspede.' },
+                { time: '13:15', context: 'Chamados.', problem: 'Recepção pede conserto de cofre no quarto 101 E Cozinha pede reparo no forno. Ambos "urgentes".',
+                  options: [
+                      { text: 'Avisar a Recepção do atraso de 15 min e consertar o Forno primeiro (impacto coletivo).', cons: 'O almoço de 100 pessoas não para. O hóspede espera pouco tempo.', imp: { organizacao: 3, eficiencia: 2 }, feedback: 'Priorização estratégica (coletivo acima do individual).' },
+                      { text: 'Consertar o cofre em 5 minutos (rápido), e então focar 100% no forno complexo.', cons: 'O hóspede fica feliz rápido e você se dedica ao problema maior depois.', imp: { eficiencia: 3, hospede: 2 }, feedback: 'Gestão de filas (Triage) baseada no tempo de resolução.' },
+                      { text: 'Dividir-se: mandar o auxiliar para o cofre enquanto você assume o forno da cozinha.', cons: 'Ambos os setores são atendidos simultaneamente com eficiência.', imp: { equipe: 3, lideranca: 2 }, feedback: 'Delegação e gestão de equipe técnica sob pressão.' }
+                  ], pedag: 'Conflito de Prioridades.' },
+                { time: '14:45', context: 'Quarto 505.', problem: 'A maçaneta de um quarto ocupado está meio solta. O hóspede não está no momento.',
+                  options: [
+                      { text: 'Entrar com a Governança, apertar a maçaneta em 2 minutos e deixar um cartão avisando do reparo.', cons: 'O hóspede volta, vê a maçaneta firme e o cartão de "Cuidamos de você".', imp: { qualidade: 3, hospede: 2 }, feedback: 'Manutenção proativa e comunicação transparente.' },
+                      { text: 'Trocar todo o mecanismo da fechadura, garantindo máxima segurança contra arrombamentos.', cons: 'A segurança do quarto é elevada ao padrão máximo do hotel.', imp: { risco: 3, organizacao: 2 }, feedback: 'Foco na segurança patrimonial preventiva.' },
+                      { text: 'Aguardar o hóspede retornar para pedir permissão antes de consertar, por política de privacidade.', cons: 'O hóspede agradece o respeito ao espaço dele e você conserta na hora.', imp: { empatia: 2, organizacao: 1 }, feedback: 'Respeito estrito aos protocolos de privacidade do cliente.' }
+                  ], pedag: 'Manutenção Proativa.' },
+                { time: '16:00', context: 'Corredor.', problem: 'Lâmpada queimada perto do elevador, mas você está indo para outro chamado com a caixa de ferramentas.',
+                  options: [
+                      { text: 'Parar 1 minuto, trocar a lâmpada que está na sua caixa e seguir para o chamado principal.', cons: 'O corredor fica iluminado. Você evitou abrir uma nova ordem de serviço.', imp: { eficiencia: 3, proatividade: 2 }, feedback: 'Atitude "olho de dono" e hiper-eficiência.' },
+                      { text: 'Seguir para o chamado urgente, mas avisar no rádio para o auxiliar vir trocar a lâmpada.', cons: 'O chamado prioritário é atendido e a lâmpada é reposta pela equipe.', imp: { equipe: 2, organizacao: 2 }, feedback: 'Priorização mantida com delegação eficaz.' },
+                      { text: 'Lançar a Ordem de Serviço pelo celular para gerar histórico de queima daquela lâmpada.', cons: 'O dado ajuda a mapear se há um curto-circuito no andar.', imp: { organizacao: 3, risco: 1 }, feedback: 'Foco na geração de dados e inteligência de manutenção preventiva.' }
+                  ], pedag: 'Identificação Visual.' },
+                { time: '17:30', context: 'Academia.', problem: 'A esteira quebrou e a peça de reposição vai demorar 5 dias para chegar.',
+                  options: [
+                      { text: 'Colocar uma placa bonita de "Em Manutenção - Melhorando para você" e desligar da tomada.', cons: 'O aviso isola o risco de acidentes e comunica claramente o status.', imp: { risco: 3, organizacao: 2 }, feedback: 'Isolamento seguro de equipamento com comunicação visual.' },
+                      { text: 'Retirar a esteira da academia com a ajuda de 2 colegas e levar para a oficina.', cons: 'A academia fica com aspecto de nova, sem equipamentos quebrados à vista.', imp: { qualidade: 2, equipe: 2 }, feedback: 'Preservação da estética e organização do espaço do cliente.' },
+                      { text: 'Oferecer um mapa de corrida ao ar livre na Recepção como alternativa aos hóspedes fitness.', cons: 'Mitigou a falta do equipamento criando uma nova opção de experiência.', imp: { hospede: 3, criatividade: 2 }, feedback: 'Trabalho em conjunto com a operação para criar alternativas (Hospitalidade).' }
+                  ], pedag: 'Gerenciamento de Expectativa/Risco.' },
+                { time: '18:45', context: 'Salão de Eventos.', problem: 'Organizador pede para pendurar um banner pesado numa parede de drywall que não aguenta.',
+                  options: [
+                      { text: 'Explicar o risco estrutural, mas montar um suporte de chão improvisado super firme para o banner.', cons: 'O banner fica seguro e o cliente fica satisfeito com a alternativa técnica.', imp: { eficiencia: 3, hospede: 2 }, feedback: 'Trouxe a solução em vez de apenas dar o "não" técnico.' },
+                      { text: 'Negar a fixação baseando-se nas plantas do hotel para evitar queda e acidente no evento.', cons: 'Evitou a destruição da parede e possível ferimento em convidados.', imp: { risco: 3, organizacao: 2 }, feedback: 'Postura firme baseada em normas de engenharia e segurança.' },
+                      { text: 'Chamar o gerente de eventos para negociar outro lugar do salão com parede de alvenaria.', cons: 'O comercial realoca o banner para um local seguro com o cliente.', imp: { equipe: 2, organizacao: 2 }, feedback: 'Devolveu o problema de relacionamento para o setor Comercial.' }
+                  ], pedag: 'Limitações Técnicas vs Pedido.' },
+                { time: '20:10', context: 'Oficina.', problem: 'Há várias ferramentas espalhadas pela oficina após um dia muito intenso de chamados.',
+                  options: [
+                      { text: 'Gastar os últimos 20 minutos limpando e organizando cada chave no painel (Metodologia 5S).', cons: 'A oficina fica um brinco. O turno de amanhã acha tudo em 5 segundos.', imp: { organizacao: 3, qualidade: 2 }, feedback: 'Excelência em organização de backoffice (5S).' },
+                      { text: 'Guardar apenas o maquinário de alto valor no cofre e deixar as chaves manuais na bancada.', cons: 'Você agiliza sua saída, garantindo apenas o patrimônio mais caro.', imp: { eficiencia: 2, risco: 2 }, feedback: 'Gestão de risco focada no que tem maior impacto financeiro.' },
+                      { text: 'Pedir ajuda ao auxiliar para separar as ferramentas por tipo de conserto (elétrica/hidráulica).', cons: 'A equipe se une para organizar e o setor fica otimizado.', imp: { equipe: 3, organizacao: 1 }, feedback: 'Promoção de organização coletiva.' }
+                  ], pedag: 'Organização Interna.' },
+                { time: '21:30', context: 'Fim de turno.', problem: 'O ar-condicionado de um hóspede pingou, mas você consertou e não sobrou tempo de avisar a governança.',
+                  options: [
+                      { text: 'Ir até a sala da governança e avisar o supervisor da noite para mandarem enxugar.', cons: 'A governança seca o quarto e o hóspede dorme no seco.', imp: { equipe: 3, organizacao: 2 }, feedback: 'Comunicação verbal direta intersetorial vital.' },
+                      { text: 'Lançar a informação detalhada na Ordem de Serviço marcando "Depende de Governança".', cons: 'O sistema fica atualizado e alerta os setores automaticamente.', imp: { organizacao: 3, qualidade: 1 }, feedback: 'Uso do sistema para comunicação formal (Compliance).' },
+                      { text: 'Pegar um pano você mesmo, voltar ao quarto, secar a poça e ir embora.', cons: 'Você resolve a ponta final do problema de forma autônoma e rápida.', imp: { eficiencia: 3, proatividade: 2 }, feedback: 'Extrema proatividade, evitando burocracia.' }
+                  ], pedag: 'Fechamento Integrado.' }
+            ],
+            rh: [
+                { time: '09:00', context: 'Sala do RH.', problem: 'Dois recepcionistas estão discutindo rispidamente no corredor sobre a escala de folgas.',
+                  options: [
+                      { text: 'Chamar ambos para a sala de reunião, ouvir os dois lados e redesenhar a escala num acordo.', cons: 'O clima pacifica imediatamente e eles se sentem ouvidos.', imp: { equipe: 3, empatia: 2 }, feedback: 'Mediação de conflitos humanizada e colaborativa.' },
+                      { text: 'Separar a briga, enviar os dois aos postos e marcar uma reunião com o gerente deles à tarde.', cons: 'Restaura a ordem no corredor rápido e envolve a liderança oficial.', imp: { organizacao: 2, risco: 2 }, feedback: 'Respeito à hierarquia e foco na ordem imediata.' },
+                      { text: 'Revisar a escala você mesmo, identificar o desequilíbrio e publicar uma nova tabela ajustada.', cons: 'O problema estrutural da escala é resolvido de forma imparcial.', imp: { eficiencia: 3, organizacao: 2 }, feedback: 'Foco no processo que causou o conflito (causa-raiz).' }
+                  ], pedag: 'Mediação de Conflito.' },
+                { time: '10:30', context: 'Admissão.', problem: 'Novo mensageiro chegou para o 1º dia, mas o uniforme dele não foi entregue pela costureira.',
+                  options: [
+                      { text: 'Emprestar um terno do achados e perdidos limpo e colocar o bóton do hotel nele provisoriamente.', cons: 'Ele se sente integrado, trabalha no padrão visual e o hotel não para.', imp: { eficiencia: 3, qualidade: 1 }, feedback: 'Solução improvisada com foco em manter a integração (Onboarding).' },
+                      { text: 'Usar o dia de hoje apenas para treinamento teórico, leitura de manuais e tour pelo hotel.', cons: 'Ele conhece toda a estrutura do hotel com calma sem expor a falta de farda.', imp: { organizacao: 3, qualidade: 2 }, feedback: 'Adaptação inteligente do cronograma de Onboarding.' },
+                      { text: 'Ligar para a costureira exigindo entrega expressa em 1 hora pagando uma taxa de urgência.', cons: 'A farda chega rápido, mantendo o padrão exato exigido pela marca.', imp: { equipe: 2, risco: 1 }, feedback: 'Ação ágil e logística para garantir os recursos.' }
+                  ], pedag: 'Integração de Novos.' },
+                { time: '11:45', context: 'Escritório.', problem: 'A Supervisora de Governança chora na sua sala, dizendo estar sobrecarregada com a equipe reduzida.',
+                  options: [
+                      { text: 'Ouvir com empatia, dar um copo de água e desenhar com ela um plano de priorização de andares.', cons: 'Ela se acalma, sente apoio psicológico e volta com um norte claro.', imp: { empatia: 3, equipe: 2 }, feedback: 'Apoio emocional aliado a suporte de gestão (Liderança).' },
+                      { text: 'Autorizar imediatamente o pagamento de horas extras para 2 camareiras cobrirem a demanda dela.', cons: 'O problema físico da equipe é resolvido na hora, aliviando a carga.', imp: { eficiencia: 3, organizacao: 1 }, feedback: 'Alocação rápida de recursos para desafogar a operação.' },
+                      { text: 'Convocar uma reunião com o Gerente Geral para discutir a contratação urgente de freelancers.', cons: 'O assunto é levado estrategicamente para cima para evitar novos picos.', imp: { organizacao: 3, risco: 2 }, feedback: 'Visão de longo prazo focada em planejamento de força de trabalho.' }
+                  ], pedag: 'Saúde Mental e Retenção.' },
+                { time: '13:00', context: 'Comunicação.', problem: 'Uma nova regra de descontos foi lançada, mas 3 setores estão aplicando de forma errada.',
+                  options: [
+                      { text: 'Fazer um "Tour" pelos 3 setores, gastando 5 minutos em cada para explicar pessoalmente (Briefing).', cons: 'A regra é compreendida perfeitamente graças à comunicação face a face.', imp: { equipe: 3, qualidade: 2 }, feedback: 'Comunicação interna ativa e treinamento on-the-job.' },
+                      { text: 'Desenhar um infográfico visualmente simples e colar nos murais dos setores.', cons: 'A informação fica eternizada de forma fácil de ler, padronizando a regra.', imp: { organizacao: 3, eficiencia: 2 }, feedback: 'Gestão visual da informação (Comunicação Assíncrona).' },
+                      { text: 'Pedir que os gerentes de cada setor reforcem a regra em suas reuniões diárias.', cons: 'Você empodera as lideranças e garante que o fluxo siga a hierarquia.', imp: { lideranca: 2, organizacao: 2 }, feedback: 'Uso da cadeia de comando para cascatear informações.' }
+                  ], pedag: 'Comunicação Interna.' },
+                { time: '14:30', context: 'Ponto.', problem: 'Um cozinheiro essencial faltou sem avisar e a cozinha tem um evento para 200 pessoas à noite.',
+                  options: [
+                      { text: 'Ligar para folguistas do setor e negociar o pagamento dobrado/folga extra para alguém vir.', cons: 'Um cozinheiro topa vir. A cozinha ganha fôlego para o evento.', imp: { eficiencia: 3, equipe: 2 }, feedback: 'Negociação rápida para cobertura de escala emergencial.' },
+                      { text: 'Ir à cozinha e ajudar a equipe em tarefas básicas (lavar folhas, picar) para adiantar o fluxo.', cons: 'A equipe vê o RH botando a mão na massa e o moral da tropa sobe muito.', imp: { equipe: 3, empatia: 2 }, feedback: 'Liderança pelo exemplo e apoio direto à operação ("Hands-on").' },
+                      { text: 'Conversar com o Chef para reduzirem a complexidade do cardápio ou o número de pratos do evento.', cons: 'Adapta a operação à realidade da equipe, garantindo a entrega.', imp: { organizacao: 2, risco: 2 }, feedback: 'Ação preventiva para evitar atrasos na entrega do produto final.' }
+                  ], pedag: 'Cobertura de Escala.' },
+                { time: '15:45', context: 'Feedback.', problem: 'Gerente A&B pede a demissão de um garçom por mau atendimento. O garçom diz que o cliente o xingou.',
+                  options: [
+                      { text: 'Fazer uma investigação imparcial: ouvir colegas de mesa, checar câmeras e proteger o funcionário.', cons: 'Descobre-se o abuso do cliente. O garçom recebe apoio e não punição.', imp: { justiça: 3, equipe: 2 }, feedback: 'Postura investigativa, justa e protetora do colaborador.' },
+                      { text: 'Aplicar apenas uma advertência verbal ao garçom por ter discutido, mas acalmar o Gerente A&B.', cons: 'Media o conflito interno de forma diplomática, sem demissões.', imp: { organizacao: 2, risco: 2 }, feedback: 'Equilíbrio político e foco no meio-termo disciplinar.' },
+                      { text: 'Transferir o garçom para a área de Eventos temporariamente para esfriar a relação com o restaurante.', cons: 'Mantém o talento na empresa, mas resolve a tensão no salão principal.', imp: { eficiencia: 2, equipe: 1 }, feedback: 'Realocação estratégica para oxigenar o clima.' }
+                  ], pedag: 'Apuração de Fatos.' },
+                { time: '16:30', context: 'Benefícios.', problem: 'Hoje é aniversário de 3 funcionários, mas não há orçamento para comprar bolo.',
+                  options: [
+                      { text: 'Comprar os ingredientes básicos e pedir para o padeiro do hotel fazer um bolo simples internamente.', cons: 'Custo baixíssimo, bolo fresco e os aniversariantes cantam parabéns.', imp: { criatividade: 3, equipe: 2 }, feedback: 'Uso de recursos internos (Sinergia) para gerar motivação.' },
+                      { text: 'Imprimir certificados de "Feliz Aniversário", colher assinaturas da equipe e entregar com aplausos.', cons: 'Reconhecimento social que gera grande emoção a custo zero.', imp: { empatia: 3, qualidade: 1 }, feedback: 'Foco no reconhecimento afetivo e pertencimento.' },
+                      { text: 'Dar um dia extra de folga para os três escolherem no mês seguinte (Banco de Horas).', cons: 'Benefício que não gasta caixa agora e é super valorizado pela equipe.', imp: { eficiencia: 2, organizacao: 2 }, feedback: 'Benefício não-financeiro de alto impacto (Time-off).' }
+                  ], pedag: 'Motivação e Endomarketing.' },
+                { time: '17:15', context: 'Integração.', problem: 'A Manutenção reclama que a Governança não limpa os quartos depois dos consertos pesados.',
+                  options: [
+                      { text: 'Marcar uma reunião rápida com os líderes para definirem quem faz o quê (SLA interno).', cons: 'As responsabilidades ficam claras e a "rixa" diminui.', imp: { organizacao: 3, equipe: 2 }, feedback: 'Foco em alinhar processos e acordos intersetoriais (SLA).' },
+                      { text: 'Criar um formulário conjunto (checklist) onde Manutenção e Governança assinam juntos a liberação.', cons: 'O processo amarra a responsabilidade de ambos oficialmente.', imp: { qualidade: 2, risco: 2 }, feedback: 'Criação de protocolo administrativo de dupla checagem.' },
+                      { text: 'Puxar um café da tarde informal entre as duas equipes para quebrarem o gelo e conversarem.', cons: 'Eles fazem amizade e passam a se ajudar mais organicamente.', imp: { equipe: 3, empatia: 1 }, feedback: 'Tratou o conflito melhorando as relações interpessoais.' }
+                  ], pedag: 'Alinhamento de Setores.' },
+                { time: '18:00', context: 'Treinamento.', problem: 'Houve 5 reclamações de "falta de simpatia" na Recepção na última semana.',
+                  options: [
+                      { text: 'Rodar um treinamento focado em inteligência emocional e sorriso na voz para toda a Recepção.', cons: 'A equipe se engaja e a nota de simpatia sobe nas próximas semanas.', imp: { qualidade: 3, equipe: 2 }, feedback: 'Ação focada em capacitação técnica e comportamental.' },
+                      { text: 'Criar um programa de gamificação: "Estrela da Recepção" com prêmio para quem receber elogios.', cons: 'A motivação dispara e a equipe começa a buscar ativamente o encantamento.', imp: { criatividade: 3, eficiencia: 2 }, feedback: 'Uso de incentivos para mudar comportamentos rapidamente.' },
+                      { text: 'Fazer reuniões individuais (1:1) com cada recepcionista para entender se estão insatisfeitos com algo.', cons: 'Descobre-se falhas nos equipamentos que estavam estressando a equipe.', imp: { empatia: 3, organizacao: 2 }, feedback: 'Focou em descobrir a causa-raiz escutando o colaborador.' }
+                  ], pedag: 'Desempenho e Treinamento.' },
+                { time: '19:00', context: 'Clima.', problem: 'Uma funcionária pede para usar uniforme feminino, diferente do gênero de registro.',
+                  options: [
+                      { text: 'Aprovar o pedido imediatamente, entregar a nova farda e celebrar a diversidade com ela.', cons: 'Ela trabalha 100% motivada. O hotel se consolida como lugar seguro.', imp: { empatia: 3, equipe: 3 }, feedback: 'Inclusão plena e acolhimento de diversidade.' },
+                      { text: 'Atualizar o manual de uniformes do hotel, permitindo que a escolha de farda seja livre para todos.', cons: 'A política do hotel se moderniza e evita novos casos similares.', imp: { organizacao: 3, qualidade: 2 }, feedback: 'Transformou uma questão pontual em uma política de Diversidade (ESG).' },
+                      { text: 'Fazer uma reunião com a liderança para alinhar a mudança e treinar o time sobre respeito a identidade.', cons: 'Garante que ela será respeitada pelos colegas, prevenindo assédio.', imp: { risco: 3, organizacao: 2 }, feedback: 'Ação preventiva e educacional focada no clima seguro.' }
+                  ], pedag: 'Diversidade e Inclusão.' }
+            ],
+            eventos: [
+                { time: '08:00', context: 'Salão Principal.', problem: 'O organizador do congresso chega e quer mudar a sala de formato (de U para Auditório) em 30 mins.',
+                  options: [
+                      { text: 'Acionar a equipe de montagem urgente e ajudar pessoalmente a virar as mesas (Mutirão).', cons: 'A sala fica pronta, o cliente se surpreende com a força-tarefa da hotelaria.', imp: { equipe: 3, eficiencia: 3 }, feedback: 'Velocidade de execução e atitude "Hands-on" (Fazer Acontecer).' },
+                      { text: 'Negociar com ele para começarem o credenciamento lá fora enquanto você monta a sala com calma.', cons: 'Ganha 15 minutos extras e a sala é montada sem correria excessiva.', imp: { organizacao: 2, qualidade: 2 }, feedback: 'Habilidade de negociação e gestão de tempo do evento.' },
+                      { text: 'Explicar que o custo da mudança é X e aprovar o aditivo rapidamente antes de começar.', cons: 'Gera receita extra justificada pelo trabalho de última hora da equipe.', imp: { risco: 2, organizacao: 2 }, feedback: 'Foco na proteção da receita (Revenue) e formalização de serviços.' }
+                  ], pedag: 'Alteração de Set-up.' },
+                { time: '09:30', context: 'Coffee Break.', problem: 'O fornecedor de pães especiais atrasou no trânsito e não vai chegar pro intervalo das 10h.',
+                  options: [
+                      { text: 'Substituir pelos salgados do estoque geral do hotel e antecipar frutas. Fazer uma mesa bonita.', cons: 'Os participantes comem bem, o cliente aceita o plano B sem estresse.', imp: { eficiencia: 3, qualidade: 2 }, feedback: 'Uso de criatividade e recursos internos (estoque de segurança).' },
+                      { text: 'Reunir com o organizador, ser transparente e sugerir atrasar o intervalo em 15 minutos.', cons: 'O organizador agradece a sinceridade e ajusta a palestra para cobrir o tempo.', imp: { organizacao: 2, equipe: 2 }, feedback: 'Comunicação transparente B2B e alinhamento de cronograma.' },
+                      { text: 'Mandar um funcionário do evento de carro resgatar a encomenda no meio do caminho.', cons: 'Missão cumprida: os pães chegam quentes no minuto exato do coffee.', imp: { equipe: 3, eficiencia: 2 }, feedback: 'Logística avançada para salvar a entrega original.' }
+                  ], pedag: 'Gestão de Fornecedores.' },
+                { time: '11:00', context: 'Comercial.', problem: 'Empresa pede orçamento para megaevento, mas exige 30% de desconto na alimentação.',
+                  options: [
+                      { text: 'Conceder os 30% na comida, mas cobrar preço cheio no aluguel do salão e nos equipamentos.', cons: 'A margem do evento se equilibra e a empresa assina o contrato.', imp: { organizacao: 3, flexibilidade: 2 }, feedback: 'Estratégia de "mix de margem" excelente para fechar vendas.' },
+                      { text: 'Manter o preço, mas oferecer 1 hora a mais de evento gratuito (upselling embutido).', cons: 'A empresa percebe valor na hora extra e desiste de pedir desconto.', imp: { qualidade: 2, eficiencia: 2 }, feedback: 'Agregou valor em vez de reduzir preço (Valor Percebido).' },
+                      { text: 'Negociar com o Chef um cardápio 30% mais barato em insumos para aprovar o desconto pedido.', cons: 'Adequa o produto ao orçamento (budget) do cliente sem o hotel perder dinheiro.', imp: { equipe: 3, organizacao: 2 }, feedback: 'Sinergia com A&B para engenharia de cardápio.' }
+                  ], pedag: 'Negociação e Vendas.' },
+                { time: '12:15', context: 'Audiovisual (AV).', problem: 'No meio do discurso, o microfone principal falha e começa a apitar alto (microfonia).',
+                  options: [
+                      { text: 'Correr até o palco imediatamente com um microfone de fio reserva (backup) já ligado.', cons: 'O palestrante continua em 5 segundos, público nem percebe a crise.', imp: { eficiencia: 3, qualidade: 2 }, feedback: 'Prontidão extrema e plano de contingência ativado.' },
+                      { text: 'Ligar para a mesa de som no rádio e pedir para cortarem o canal e ativarem o microfone da plateia.', cons: 'O áudio é restaurado via mesa, mantendo a postura invisível da equipe.', imp: { equipe: 2, organizacao: 2 }, feedback: 'Resolução técnica eficiente nos bastidores.' },
+                      { text: 'Subir ao palco, pedir desculpas com humor e arrumar o cabo do equipamento original.', cons: 'O público ri, o clima descomplica e a palestra volta descontraída.', imp: { empatia: 2, hospede: 2 }, feedback: 'Quebra-gelo empático e gestão de crise humana.' }
+                  ], pedag: 'Falha Técnica ao Vivo.' },
+                { time: '14:00', context: 'Recepção Eventos.', problem: 'Esperavam 50 pessoas. Apareceram 70. Faltam cadeiras e o coffee break vai ser curto.',
+                  options: [
+                      { text: 'Acomodar os 20 extras no fundo com cadeiras do restaurante e já avisar a cozinha do aumento.', cons: 'Ninguém fica em pé e a cozinha garante a comida.', imp: { eficiencia: 3, equipe: 2 }, feedback: 'Ação rápida de expansão de capacidade.' },
+                      { text: 'Chamar o cliente em particular, assinar o aditivo de 20 pessoas e autorizar a liberação geral.', cons: 'Garante que as 20 pessoas a mais serão faturadas (aumento de receita).', imp: { organizacao: 3, risco: 2 }, feedback: 'Foco no faturamento e formalização de serviços (Upselling).' },
+                      { text: 'Colocar mesas bistrô (altas) no fundo e vender o evento como um formato "Híbrido e Dinâmico".', cons: 'As pessoas aceitam ficar em pé achando que é o estilo do evento.', imp: { criatividade: 3, qualidade: 1 }, feedback: 'Reenquadramento criativo (framing) do problema.' }
+                  ], pedag: 'Aumento de Lotação (Walk-in).' },
+                { time: '15:30', context: 'Logística.', problem: 'O congresso atrasou. Você tem apenas 40 minutos para desmontar a sala e montar um Casamento à noite.',
+                  options: [
+                      { text: 'Fazer um corredor humano com as equipes de Limpeza e Eventos para retirar e colocar móveis juntos.', cons: 'A sala é transformada de Auditório para Casamento em exatos 35 minutos.', imp: { equipe: 3, eficiencia: 3 }, feedback: 'Operação de "Virada de Sala" (Turnaround) em nível de excelência.' },
+                      { text: 'Pedir à noiva para servir os welcome drinks no jardim do hotel (cortesia) até a sala ficar pronta.', cons: 'A noiva fica feliz com a cortesia e a equipe tem tempo para montar a sala.', imp: { hospede: 3, flexibilidade: 2 }, feedback: 'Gestão de tempo aliada ao encantamento de cliente VIP.' },
+                      { text: 'Focar na montagem das mesas principais e iluminação, escondendo o resto atrás de cortinas pesadas.', cons: 'A festa começa no visual perfeito, enquanto vocês terminam o fundo.', imp: { organizacao: 2, criatividade: 2 }, feedback: 'Ilusionismo logístico focado na "primeira impressão".' }
+                  ], pedag: 'Tempo de Montagem (Turnaround).' },
+                { time: '16:45', context: 'Visita Técnica.', problem: 'Uma cliente corporativa faz visita técnica no hotel e reclama que o pé-direito (altura) da sala é baixo.',
+                  options: [
+                      { text: 'Mostrar fotos em iPad de eventos anteriores mostrando como a iluminação cênica amplia o salão.', cons: 'A cliente consegue visualizar e perde o medo da altura do teto.', imp: { qualidade: 3, eficiencia: 2 }, feedback: 'Uso de material visual (case de sucesso) para quebrar objeções.' },
+                      { text: 'Oferecer outro salão no térreo que tem o teto mais alto, mesmo sendo um pouco mais caro.', cons: 'Ela fecha o outro salão. Você fez um upselling inteligente.', imp: { organizacao: 2, flexibilidade: 2 }, feedback: 'Redirecionamento focado nas necessidades (Venda Consultiva).' },
+                      { text: 'Destacar fortemente outras qualidades: "O teto é assim para garantir a melhor acústica da cidade".', cons: 'Transforma o "defeito" em um super diferencial técnico (acústica).', imp: { criatividade: 3, equipe: 1 }, feedback: 'Argumentação de vendas avançada.' }
+                  ], pedag: 'Vendas e Objeções.' },
+                { time: '18:00', context: 'Foyer.', problem: 'Grupo corporativo gringo pede uma TV grande no hall para passar o jogo do seu país agora.',
+                  options: [
+                      { text: 'Pedir 10 minutos para a equipe AV buscar uma TV de 60" no depósito e montar no tripé no hall.', cons: 'O grupo se reúne em volta da TV e comemora. O cliente fica impressionado.', imp: { hospede: 3, eficiencia: 2 }, feedback: 'Hospitalidade de alto nível baseada em agilidade técnica.' },
+                      { text: 'Negociar que eles assistam no telão principal de um salão menor que está vazio e com som.', cons: 'Eles ganham uma "sala de cinema VIP" e não obstruem o hall.', imp: { organizacao: 3, qualidade: 2 }, feedback: 'Otimização inteligente dos espaços ociosos do hotel.' },
+                      { text: 'Oferecer que vão ao Sports Bar do hotel, garantindo que o garçom coloque no canal certo.', cons: 'O grupo consome cerveja no bar, aumentando a receita de A&B.', imp: { equipe: 2, flexibilidade: 2 }, feedback: 'Sinergia entre setores para gerar receita adicional.' }
+                  ], pedag: 'Atendimento Personalizado.' },
+                { time: '19:30', context: 'BEO (Ordem de Serviço).', problem: 'A BEO informa "Jantar Empratado", mas o cliente diz que o combinado verbal foi "Buffet".',
+                  options: [
+                      { text: 'Acreditar no cliente, correr para a cozinha e pedir para converterem as guarnições em Buffet rápido.', cons: 'O Chef reage rápido. O cliente percebe que o hotel foca na solução.', imp: { equipe: 3, eficiencia: 2 }, feedback: 'Priorizou a confiança no cliente e a flexibilidade da operação.' },
+                      { text: 'Conferir o e-mail de fechamento rápido. Estava Buffet. Assumir o erro do BEO e trocar tudo.', cons: 'Resolução honesta que fortalece a confiança contratual.', imp: { organizacao: 3, risco: 2 }, feedback: 'Validação documental (Compliance) e correção assertiva.' },
+                      { text: 'Oferecer um "Empratado de Gala" com porções duplas para não ter que desmontar o salão inteiro.', cons: 'O cliente adora a proposta de "Gala" e aceita manter o empratado.', imp: { criatividade: 3, qualidade: 2 }, feedback: 'Excelente habilidade de negociação e contorno.' }
+                  ], pedag: 'Divergência BEO.' },
+                { time: '21:00', context: 'Festa.', problem: 'A festa da empresa está animada, mas deu 22h, limite de som contratado, e o DJ não quer parar.',
+                  options: [
+                      { text: 'Chamar o diretor da empresa, explicar a regra e pedir para ele autorizar baixar o volume 50%.', cons: 'A festa continua como "lounge", respeitando o descanso do hotel.', imp: { risco: 3, organizacao: 2 }, feedback: 'Excelente articulação diplomática e respeito às leis do silêncio.' },
+                      { text: 'Oferecer que a equipe continue no bar do hotel (que tem isolamento acústico) por mais 1 hora.', cons: 'A festa se muda para o bar, gerando receita e parando o barulho.', imp: { hospede: 2, eficiencia: 3 }, feedback: 'Redirecionamento tático focando em experiência e receita.' },
+                      { text: 'Acionar a equipe de manutenção para focar o som das caixas apenas para o centro da pista.', cons: 'O volume geral cai e o som fica concentrado onde importa.', imp: { equipe: 2, qualidade: 2 }, feedback: 'Solução técnica inteligente para equalizar a satisfação.' }
+                  ], pedag: 'Limite de Horário/Som.' }
+            ],
+            lazer: [
+                { time: '09:00', context: 'Programação.', problem: 'Choveu e o "Futebol de Sabão" externo foi cancelado. Você tem 30 crianças no lobby esperando.',
+                  options: [
+                      { text: 'Transferir todos para o salão de jogos e organizar um campeonato de ping-pong/pebolim relâmpago.', cons: 'As crianças esquecem a chuva e a gritaria vira torcida no salão.', imp: { eficiencia: 3, hospede: 2 }, feedback: 'Acionou um Plano B logístico com extrema agilidade.' },
+                      { text: 'Fazer uma "Sessão de Cinema" na sala de eventos com pipoca (pedida para a cozinha).', cons: 'Crianças calmas, ambiente seguro e pipoca garantindo a alegria.', imp: { equipe: 2, qualidade: 2 }, feedback: 'Uso de áreas livres do hotel para entretenimento passivo e sinergia (A&B).' },
+                      { text: 'Organizar uma "Gincana de Caça ao Tesouro Interna" pelos corredores sem atrapalhar os hóspedes.', cons: 'A aventura continua sendo dinâmica e gasta a energia deles.', imp: { criatividade: 3, qualidade: 2 }, feedback: 'Adaptação criativa de atividades de alto impacto.' }
+                  ], pedag: 'Plano B (Clima).' },
+                { time: '10:30', context: 'Recreação.', problem: 'Um menino não quer brincar na roda com os outros e está chorando num canto, querendo o pai.',
+                  options: [
+                      { text: 'Sentar ao lado dele, oferecer massinha de modelar e fazer companhia até ele se acalmar.', cons: 'Ele relaxa com uma atividade solo e a roda principal continua.', imp: { empatia: 3, hospede: 2 }, feedback: 'Extrema sensibilidade, inclusão e atendimento individualizado.' },
+                      { text: 'Mudar a atividade da roda toda para algo que ele confessou gostar (ex: Desenhar super-heróis).', cons: 'Ele se integra imediatamente por ver seu tema favorito.', imp: { flexibilidade: 3, qualidade: 2 }, feedback: 'Leitura do público e flexibilidade do planejamento (Pivotar).' },
+                      { text: 'Avisar os pais pelo WhatsApp oficial com tranquilidade para que venham conversar com ele.', cons: 'Os pais resolvem, a transparência gera confiança na equipe.', imp: { organizacao: 2, risco: 2 }, feedback: 'Boa comunicação e respeito à guarda compartilhada.' }
+                  ], pedag: 'Gestão Emocional Infantil.' },
+                { time: '12:00', context: 'Piscina.', problem: 'Atividade de "Hidroginástica com DJ". Hóspedes mais velhos reclamam do volume do som.',
+                  options: [
+                      { text: 'Reduzir o volume da música na hora, mas compensar animando muito mais no microfone.', cons: 'A hidro continua forte pela sua voz e os idosos conseguem ler.', imp: { empatia: 3, qualidade: 2 }, feedback: 'Habilidade de compensar energia sem o recurso (som).' },
+                      { text: 'Oferecer aos idosos um gazebo VIP mais distante e tranquilo para eles lerem em paz.', cons: 'Eles amam o upgrade de conforto. A música da piscina continua alta.', imp: { hospede: 3, eficiencia: 2 }, feedback: 'Encantamento (upgrade de experiência) focado em contornar conflitos.' },
+                      { text: 'Dividir a piscina em "Área Zen" e "Área Agito" usando as boias de raia do hotel.', cons: 'Delimita o espaço físico e organiza as expectativas dos dois grupos.', imp: { organizacao: 3, risco: 2 }, feedback: 'Gestão visual e física dos espaços comuns.' }
+                  ], pedag: 'Conflito de Perfis.' },
+                { time: '14:00', context: 'Kids Club.', problem: 'A sala de brinquedos lotou (atingiu a capacidade máxima por lei), mas há 5 famílias na porta.',
+                  options: [
+                      { text: 'Explicar a lei de segurança dos bombeiros com gentileza e abrir uma "Fila de Espera" no tablet.', cons: 'Os pais respeitam a norma técnica e aguardam em segurança.', imp: { risco: 3, organizacao: 3 }, feedback: 'Cumprimento estrito de normas de segurança.' },
+                      { text: 'Chamar um monitor reserva e criar uma "Turma de Passeio no Jardim" com 10 crianças de dentro.', cons: 'Abre 10 vagas instantâneas na sala e todos são atendidos.', imp: { eficiencia: 3, equipe: 2 }, feedback: 'Otimização de fluxo e alocação de recursos humanos.' },
+                      { text: 'Oferecer kits de pintura "Leve para o Quarto" para as 5 crianças que não puderam entrar.', cons: 'As crianças saem com um presente, mitigando a frustração.', imp: { hospede: 2, criatividade: 2 }, feedback: 'Gestão de filas utilizando ferramentas de distração (gifts).' }
+                  ], pedag: 'Lotação Máxima (Segurança).' },
+                { time: '15:30', context: 'Esportes.', problem: 'Dois adolescentes se desentendem num jogo de vôlei organizado pelo hotel e começam a gritar.',
+                  options: [
+                      { text: 'Apitar forte, interromper o jogo e colocar os dois sentados fora de quadra para "esfriar".', cons: 'A autoridade do juiz é mantida e o jogo volta ao normal sem violência.', imp: { lideranca: 3, risco: 2 }, feedback: 'Uso de autoridade de campo e gestão imediata de conflito.' },
+                      { text: 'Mudar a regra do jogo na hora para "quem brigar perde 5 pontos pro time", usando humor.', cons: 'Eles riem, os times se cobram e o clima fica amigável de novo.', imp: { criatividade: 3, empatia: 2 }, feedback: 'Contorno de crise através do lúdico e da gamificação.' },
+                      { text: 'Chamar o segurança do hotel discretamente para ficar na beira da quadra apenas observando.', cons: 'A presença do segurança inibe brigas maiores e o jogo segue.', imp: { equipe: 2, risco: 3 }, feedback: 'Escalonamento inteligente e prevenção de danos físicos.' }
+                  ], pedag: 'Mediação no Lazer.' },
+                { time: '16:45', context: 'Parceria.', problem: 'A Oficina de Cupcakes ia começar, mas a Cozinha mandou os bolinhos crus por engano.',
+                  options: [
+                      { text: 'Mudar a atividade para "Aventura na Cozinha", levando as crianças para verem o forno assando.', cons: 'Elas amam o tour VIP e não percebem que foi um erro de logística.', imp: { equipe: 3, criatividade: 3 }, feedback: 'Transformou um erro grave em uma experiência exclusiva (Sinergia).' },
+                      { text: 'Correr no rádio, pedir bolinhos prontos do estoque do refeitório enquanto finge uma "mágica".', cons: 'Os bolos chegam e você salva a atividade com improviso rápido.', imp: { eficiencia: 3, flexibilidade: 2 }, feedback: 'Resolução ultra-rápida (Plano B Logístico).' },
+                      { text: 'Adiar a oficina em 30 mins e oferecer pintura facial na fila de espera enquanto assam.', cons: 'Você ganha tempo oficial para a cozinha corrigir a falha sem pressa.', imp: { organizacao: 2, qualidade: 2 }, feedback: 'Gerenciamento de prazos intersetoriais com atividade "tapa-buraco".' }
+                  ], pedag: 'Sinergia e Falhas.' },
+                { time: '17:30', context: 'Lobby.', problem: 'Casal de idosos comenta que as atividades do hotel são "só para os jovens".',
+                  options: [
+                      { text: 'Organizar imediatamente uma aula de "Degustação de Chás e Histórias do Hotel" na lareira.', cons: 'Eles e outros idosos participam, adoram e se sentem prestigiados.', imp: { hospede: 3, criatividade: 3 }, feedback: 'Criação de experiência hiper-direcionada para o nicho (Hospitalidade).' },
+                      { text: 'Apresentar a programação de "Caminhada Zen Matinal" e agendar eles como VIPs de amanhã.', cons: 'Eles veem que há opções estruturadas e ficam na expectativa.', imp: { organizacao: 2, qualidade: 2 }, feedback: 'Comunicação assertiva da grade de programação.' },
+                      { text: 'Falar com o bar para prepararem dois drinks clássicos cortesia para eles curtirem o pôr do sol.', cons: 'Compensa a falta de atividades com mimos gastronômicos.', imp: { equipe: 2, empatia: 2 }, feedback: 'Uso de A&B (Alimentos e Bebidas) para encantar perfis difíceis.' }
+                  ], pedag: 'Atendimento de Perfis Diferentes.' },
+                { time: '19:00', context: 'Show Noturno.', problem: 'O cantor de voz e violão do lobby cancelou faltando 1 hora para começar.',
+                  options: [
+                      { text: 'Assumir o microfone, organizar um "Karaokê Interativo dos Hóspedes" no palco.', cons: 'O lobby fica mais lotado e divertido do que se o cantor viesse.', imp: { eficiencia: 3, lideranca: 3 }, feedback: 'Atitude protagonista: "O show tem que continuar" (Showmanship).' },
+                      { text: 'Acionar um DJ local parceiro do hotel que cobra mais caro, mas chega em 30 minutos.', cons: 'A noite é salva com um profissional excelente. A gerência aprova.', imp: { qualidade: 3, equipe: 2 }, feedback: 'Rede de contatos e rápida aprovação orçamentária para crises.' },
+                      { text: 'Colocar uma playlist de Jazz de alta qualidade, diminuir a luz e mudar o foco para o Barman fazer shows com garrafas.', cons: 'Transforma o clima da noite numa pegada mais lounge e sofisticada.', imp: { criatividade: 3, organizacao: 2 }, feedback: 'Direção de arte e adaptação de clima.' }
+                  ], pedag: 'Falta de Terceiros.' },
+                { time: '20:30', context: 'Feedback.', problem: 'Ouvindo hóspedes, você descobre que um dos monitores está sempre no celular durante as atividades.',
+                  options: [
+                      { text: 'Chamar o monitor em particular, dar o feedback imediatamente e pedir que guarde o celular no cofre.', cons: 'Ele corrige a postura na mesma hora e os hóspedes percebem.', imp: { lideranca: 3, equipe: 2 }, feedback: 'Feedback corretivo e de alinhamento imediato.' },
+                      { text: 'Avisar o Coordenador de Lazer para que o feedback venha oficialmente pela hierarquia superior.', cons: 'Mantém a estrutura de comando e o registro formal de RH.', imp: { organizacao: 3, risco: 2 }, feedback: 'Respeito à hierarquia formal.' },
+                      { text: 'Criar uma "Caixa do Desapego Digital" onde toda a equipe e crianças deixam os celulares.', cons: 'Transforma o erro individual numa regra de ouro divertida para todos.', imp: { criatividade: 3, empatia: 2 }, feedback: 'Solução sistêmica que muda a cultura do setor (Gamificação).' }
+                  ], pedag: 'Feedback e Postura.' },
+                { time: '21:45', context: 'Encerramento.', problem: 'A sala de artes terminou com tinta espalhada no chão e mesas. O turno da Limpeza já foi embora.',
+                  options: [
+                      { text: 'Reunir sua equipe, colocar música e fazer um "Mutirão da Limpeza" de 15 minutos juntos.', cons: 'A sala fica limpa. O material de pintura é salvo para amanhã.', imp: { equipe: 3, organizacao: 3 }, feedback: 'Excelência em organização e responsabilidade (Ownership).' },
+                      { text: 'Limpar apenas os pincéis e potes para não secarem, e deixar o chão para a camareira amanhã.', cons: 'Salva o material caro, otimizando seu horário de saída.', imp: { eficiencia: 2, flexibilidade: 2 }, feedback: 'Pragmatismo: priorizou o patrimônio e deixou a estrutura para limpeza.' },
+                      { text: 'Fazer um acordo com o Mensageiro noturno para ele ajudar em troca de um lanche do Lazer.', cons: 'Comunicação e barganha interna para resolver problemas operacionais.', imp: { equipe: 2, eficiencia: 2 }, feedback: 'Habilidade de negociação com a operação noturna.' }
+                  ], pedag: 'Organização de Retaguarda.' }
+            ],
+            admin: [
+                { time: '09:00', context: 'Contas a Pagar.', problem: 'Nota Fiscal de fornecedor chegou R$ 2.000 maior que o Orçamento (Pedido) aprovado no sistema.',
+                  options: [
+                      { text: 'Segurar o pagamento, ligar para o fornecedor e exigir a correção e reemissão da Nota Fiscal.', cons: 'Descobre-se um erro de digitação do fornecedor. O hotel economiza R$ 2 mil.', imp: { organizacao: 3, risco: 3 }, feedback: 'Excelente auditoria e proteção do fluxo de caixa (Compliance).' },
+                      { text: 'Procurar o Chefe de Compras para entender se houve algum pedido extra (aditivo) não lançado.', cons: 'Houve aditivo. O sistema é atualizado e o pagamento segue correto.', imp: { equipe: 2, qualidade: 2 }, feedback: 'Investigação e alinhamento intersetorial antes de barrar processos.' },
+                      { text: 'Pagar o valor do orçamento e descontar os 2 mil no depósito bancário (pagamento parcial).', cons: 'Hotel paga só o que deve, mas gera conciliação bancária confusa depois.', imp: { eficiencia: 2, risco: 1 }, feedback: 'Ação ágil e pragmática, mas com menor qualidade contábil.' }
+                  ], pedag: 'Divergência de Valores.' },
+                { time: '10:15', context: 'Urgência.', problem: 'A Recepção pede R$ 300 do "Caixa Pequeno" urgente para devolver a um hóspede furioso (erro de cobrança).',
+                  options: [
+                      { text: 'Preencher um recibo de Vale Caixa, correr na recepção, colher assinatura e entregar o dinheiro.', cons: 'O hóspede é atendido rápido e o caixa da administração fica acobertado.', imp: { eficiencia: 3, organizacao: 2 }, feedback: 'Agilidade na resolução associada a controle documental.' },
+                      { text: 'Explicar que devoluções são só via Pix em até 2 dias úteis, conforme a política financeira.', cons: 'O caixa fica intocável, mas o hóspede fica mais irritado no lobby.', imp: { risco: 2, organizacao: 2 }, feedback: 'Adesão rigorosa e inflexível às políticas financeiras.' },
+                      { text: 'Fazer o Pix da conta do hotel pelo celular administrativo diretamente para a conta do hóspede.', cons: 'Rápido, seguro e moderno. Evita trânsito de espécie.', imp: { qualidade: 3, eficiencia: 2 }, feedback: 'Modernização do fluxo financeiro usando tecnologia.' }
+                  ], pedag: 'Urgência Financeira.' },
+                { time: '11:30', context: 'Compras.', problem: 'Estoque de café acabou! O fornecedor principal só entrega amanhã e o hotel tem evento às 14h.',
+                  options: [
+                      { text: 'Pegar o carro da empresa ou Uber, ir ao supermercado atacadista e comprar café para 2 dias.', cons: 'O evento acontece perfeitamente com café fresco. A nota é reembolsada.', imp: { eficiencia: 3, resolucao: 3 }, feedback: 'Prontidão logística extrema para não deixar faltar insumos.' },
+                      { text: 'Emprestar pacotes de café de um hotel vizinho da mesma rede ou parceiro.', cons: 'O café chega a custo zero momentâneo. Networking da hotelaria funciona.', imp: { equipe: 3, criatividade: 2 }, feedback: 'Uso de relacionamento inter-hoteleiro (Benchmarking solidário).' },
+                      { text: 'Acionar a cozinha para processarem cápsulas expressas ou solúvel premium como plano B.', cons: 'O café sai, mas o custo por xícara aumenta devido ao insumo diferente.', imp: { qualidade: 2, organizacao: 1 }, feedback: 'Uso dos recursos alternativos disponíveis internamente.' }
+                  ], pedag: 'Falta de Estoque Emergencial.' },
+                { time: '14:00', context: 'Sistemas.', problem: 'É dia 05, pagamento de salários. O token do banco corporativo está travado (falha do banco).',
+                  options: [
+                      { text: 'Ligar no gerente do banco no celular particular dele e exigir liberação de contingência manual.', cons: 'O gerente faz a liberação nos bastidores e a folha é paga até às 17h.', imp: { eficiencia: 3, risco: 3 }, feedback: 'Uso agressivo (e necessário) do relacionamento bancário executivo.' },
+                      { text: 'Disparar um e-mail oficial para toda a equipe explicando o problema do banco e dando previsão.', cons: 'A equipe fica calma por causa da transparência, evitando rádio peão.', imp: { equipe: 2, empatia: 2 }, feedback: 'Gestão de comunicação interna impecável em momento de crise.' },
+                      { text: 'Fazer o pagamento em lotes menores (TED) usando outra conta reserva do hotel que está ativa.', cons: 'O salário entra. O banco cobra taxas de TED, mas o compromisso é honrado.', imp: { flexibilidade: 3, organizacao: 2 }, feedback: 'Ação rápida de desvio de fluxo financeiro para contas de backup.' }
+                  ], pedag: 'Pagamento Crítico e Falha.' },
+                { time: '15:15', context: 'Faturamento.', problem: 'Uma OTA (Agência Online) gigante não enviou os relatórios de comissão, impedindo o hotel de faturar (receber).',
+                  options: [
+                      { text: 'Bloquear a OTA (Stop Sell) no sistema do hotel até que eles enviem o relatório.', cons: 'A agência nota o bloqueio, envia o relatório em 10 minutos.', imp: { organizacao: 3, risco: 2 }, feedback: 'Alavancagem comercial dura, mas eficaz (Hard Negotiation).' },
+                      { text: 'Emitir as Notas Fiscais com base no relatório interno do hotel e cobrar a agência pelos nossos dados.', cons: 'Garante o fluxo de caixa do hotel pela nossa própria base de auditoria.', imp: { eficiencia: 3, qualidade: 2 }, feedback: 'Confiança na própria auditoria e proatividade no faturamento.' },
+                      { text: 'Escalar o problema para o Diretor Geral falar com o Diretor da OTA, usando peso hierárquico.', cons: 'A diretoria resolve no networking, mantendo a relação de parceria forte.', imp: { equipe: 2, organizacao: 2 }, feedback: 'Escalonamento político (Escalation process) adequado.' }
+                  ], pedag: 'Faturamento B2B.' },
+                { time: '16:30', context: 'Conflito.', problem: 'Gerente A&B comprou panelas caras sem aprovação prévia do Diretor, mas a cozinha precisava muito.',
+                  options: [
+                      { text: 'Colocar o pagamento "em espera" e marcar reunião entre o Diretor e o Gerente A&B para alinhamento.', cons: 'As alçadas são respeitadas, a compra é aprovada após justificativa.', imp: { organizacao: 3, risco: 2 }, feedback: 'Manutenção rigorosa da cadeia de aprovação (Compliance).' },
+                      { text: 'Pagar a nota, mas enviar um e-mail de advertência administrativa sobre compras fora do fluxo.', cons: 'O fornecedor é pago, mas a regra é reforçada formalmente.', imp: { eficiencia: 2, equipe: 2 }, feedback: 'Focou no compromisso com terceiros e na educação interna.' },
+                      { text: 'Lançar as panelas no orçamento de Manutenção para não estourar a verba de A&B (desvio contábil).', cons: 'A conta fecha na aparência, mas o balancete real fica mascarado.', imp: { flexibilidade: 2, risco: 1 }, feedback: 'Uso de criatividade contábil (orçamento cruzado).' }
+                  ], pedag: 'Alçadas de Aprovação.' },
+                { time: '17:45', context: 'Auditoria.', problem: 'Diferença de R$ 50 no caixa do restaurante do almoço. O garçom não sabe explicar.',
+                  options: [
+                      { text: 'Lançar a "Quebra de Caixa" no sistema, absorver o custo e treinar o garçom no troco amanhã.', cons: 'A contabilidade avança e o garçom recebe reciclagem educativa.', imp: { organizacao: 3, empatia: 2 }, feedback: 'Absorveu perda pequena com foco no treinamento.' },
+                      { text: 'Procurar as comandas manuais e refazer as contas do dia inteiro nota por nota.', cons: 'Descobre-se um suco de R$ 50 não lançado. O garçom bipa e fecha o caixa.', imp: { qualidade: 3, eficiencia: 2 }, feedback: 'Extrema capacidade investigativa (Auditoria de minúcia).' },
+                      { text: 'Cobrar os R$ 50 do salário do garçom, conforme assinado no contrato dele.', cons: 'Aplica a regra financeira fria, garantindo o saldo zero do hotel.', imp: { risco: 3, organizacao: 2 }, feedback: 'Execução fria e estrita da política de responsabilidade de caixa.' }
+                  ], pedag: 'Auditoria e Quebra.' },
+                { time: '19:00', context: 'Diretoria.', problem: 'Diretor pede um DRE (Relatório Financeiro) para agora, mas faltam fechar as notas do bar da piscina.',
+                  options: [
+                      { text: 'Entregar o relatório informando "Valores Parciais" e estimando o Bar da Piscina pelo dia anterior.', cons: 'O diretor tem os números macro para reunião dele a tempo.', imp: { eficiencia: 3, flexibilidade: 2 }, feedback: 'Gestão de dados inteligente (uso de estimativas e transparência).' },
+                      { text: 'Ligar no rádio para o Bar da Piscina pedindo que fechem e mandem o Excel em 3 minutos (Pressão).', cons: 'O bar fecha correndo e o DRE sai real. O diretor elogia a precisão.', imp: { equipe: 2, organizacao: 2 }, feedback: 'Agilizou o fechamento mobilizando a operação de ponta.' },
+                      { text: 'Responder que o prazo do sistema é 20h e entregar no horário oficial para garantir perfeição.', cons: 'Atrasou a reunião do diretor, mas o dado (quando entregue) foi 100% perfeito.', imp: { qualidade: 3, risco: 2 }, feedback: 'Burocrático, mas pautado na absoluta integridade dos dados.' }
+                  ], pedag: 'Prazos da Diretoria.' },
+                { time: '20:15', context: 'Jurídico.', problem: 'Chegou uma carta do Procon reclamando do hotel. O prazo de resposta legal vence amanhã.',
+                  options: [
+                      { text: 'Ligar imediatamente para o advogado do hotel e passar todas as fichas e contratos para ele.', cons: 'O jurídico entra em ação com tempo e arquiva a reclamação com sucesso.', imp: { risco: 3, organizacao: 3 }, feedback: 'Perfeita delegação e gestão de riscos jurídicos.' },
+                      { text: 'Ligar para o hóspede reclamante e oferecer um reembolso e final de semana grátis se retirar a queixa.', cons: 'O hóspede aceita, a reclamação é retirada e o hotel sai sem processo.', imp: { empatia: 3, resolucao: 2 }, feedback: 'Resolução extra-judicial (acordo amigável).' },
+                      { text: 'Fazer uma carta de resposta oficial da diretoria negando os fatos baseada nos relatórios.', cons: 'Resposta administrativa padrão para o órgão público.', imp: { qualidade: 2, eficiencia: 2 }, feedback: 'Resolução formal e corporativa rápida.' }
+                  ], pedag: 'Tratativa de Órgãos Legais.' },
+                { time: '21:30', context: 'Encerramento.', problem: 'Ao fechar o escritório administrativo, nota que o cofre principal da Tesouraria ficou levemente aberto.',
+                  options: [
+                      { text: 'Trancar o cofre, puxar a fita das câmeras de segurança e mandar o vídeo para o Gerente Geral.', cons: 'O erro de segurança é documentado. Você protege o patrimônio.', imp: { risco: 3, qualidade: 3 }, feedback: 'Controle impecável de processos de segurança (Segurança Patrimonial).' },
+                      { text: 'Chamar a segurança do hotel para fazer a contagem oficial do dinheiro junto com você (auditoria).', cons: 'O dinheiro está exato. O cofre é fechado sob testemunha oficial.', imp: { equipe: 3, organizacao: 2 }, feedback: 'Acionou testemunhas e processos formais para validação.' },
+                      { text: 'Fechar o cofre, passar a senha, e colocar um aviso grande na porta: "Bata antes de fechar!".', cons: 'Ação corretiva focada no hábito humano para evitar recorrências.', imp: { eficiencia: 2, flexibilidade: 2 }, feedback: 'Solução comportamental para o funcionário que errou.' }
+                  ], pedag: 'Segurança Patrimonial.' }
+            ]
+        };
+
+        const { useState, useEffect } = React;
+        
+        // Componente simples de Icon usando SVG nativo (sem dependências externas)
+        const Icon = ({ children, size = 24, className = "", viewBox = "0 0 24 24" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+
+        const ClockIcon = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
+        const StarIcon = (props) => <Icon {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Icon>;
+        const AlertIcon = (props) => <Icon {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></Icon>;
+        const CheckIcon = (props) => <Icon {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></Icon>;
+        const RefreshIcon = (props) => <Icon {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></Icon>;
+        const BriefcaseIcon = (props) => <Icon {...props}><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></Icon>;
+        const ShareIcon = (props) => <Icon {...props}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></Icon>;
+        const HomeIcon = (props) => <Icon {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Icon>;
+
+        function App() {
+            // Estados: START -> SELECTION -> PREP -> PLAYING -> END -> REPORT
+            const [gameState, setGameState] = useState('START'); 
+            const [sector, setSector] = useState(null);
+            const [currentStage, setCurrentStage] = useState(0);
+            const [situations, setSituations] = useState([]);
+            // Indicadores Iniciais - Todos começam em 0 e são construídos pelas decisões
+            const [scores, setScores] = useState({ hospede: 0, eficiencia: 0, equipe: 0, organizacao: 0, risco: 0 });
+            const [history, setHistory] = useState([]);
+            const [consequenceModal, setConsequenceModal] = useState(null);
+            
+            const startShift = (selectedSectorId) => {
+                window.scrollTo(0, 0);
+                const s = SECTORS[selectedSectorId];
+                setSector(s);
+                
+                // Pega as 10 situações do setor e embaralha de forma justa usando Fisher-Yates
+                let shuffled = shuffleArray(DATABASE[selectedSectorId]);
+                // Embaralha também as opções de cada situação para não viciar posições A,B,C
+                shuffled = shuffled.map(sit => ({
+                    ...sit,
+                    options: shuffleArray(sit.options)
+                }));
+                
+                setSituations(shuffled);
+                
+                setScores({ hospede: 0, eficiencia: 0, equipe: 0, organizacao: 0, risco: 0 });
+                setHistory([]);
+                setCurrentStage(0);
+                setGameState('PREP');
+            };
+
+            const handleDecision = (option) => {
+                const newScores = { ...scores };
+                if (option.imp) {
+                    Object.keys(option.imp).forEach(k => {
+                        if (newScores[k] !== undefined) newScores[k] += option.imp[k];
+                    });
+                }
+                setScores(newScores);
+                
+                setHistory([...history, { situation: situations[currentStage], choice: option }]);
+                setConsequenceModal(option);
+            };
+
+            const nextSituation = () => {
+                setConsequenceModal(null);
+                window.scrollTo(0, 0);
+                if (currentStage < situations.length - 1) {
+                    setCurrentStage(currentStage + 1);
+                } else {
+                    setGameState('END');
+                    setTimeout(() => setGameState('REPORT'), 2000); // Animação de encerramento
+                }
+            };
+
+            const renderStart = () => (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center fade-in bg-cover bg-center" style={{backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.95)), url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80')"}}>
+                    <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">
+                        🏨 UM DIA NO HOTEL
+                    </h1>
+                    <p className="text-lg md:text-xl text-blue-200 mb-8 font-light italic px-4">"Você assumiu o turno. Agora, as decisões são suas."</p>
+                    
+                    <div className="w-full max-w-md bg-white/10 p-5 md:p-6 rounded-2xl backdrop-blur-sm border border-white/20 text-blue-50 mb-10 text-left text-sm md:text-base leading-relaxed">
+                        <p className="mb-3">Escolha um setor, entre no turno e enfrente situações que fazem parte do cotidiano real de um hotel.</p>
+                        <p>Não existe apenas uma maneira de resolver um problema: suas decisões moldarão o seu perfil profissional hoje.</p>
+                    </div>
+
+                    <button onClick={() => setGameState('SELECTION')} className="w-full max-w-xs bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-full shadow-lg shadow-blue-500/40 active:scale-95 transition-all text-lg flex items-center justify-center gap-2">
+                        COMEÇAR O TURNO
+                    </button>
+                </div>
+            );
+
+            const renderSelection = () => (
+                <div className="min-h-screen bg-slate-50 p-4 md:p-8 fade-in">
+                    <div className="max-w-4xl mx-auto pb-10">
+                        <div className="mb-6 md:mb-8 text-center mt-4">
+                            <h2 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight">ESCOLHA SEU SETOR</h2>
+                            <p className="text-slate-500 mt-2 text-sm">Onde você quer atuar no turno de hoje?</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                            {Object.values(SECTORS).map(s => (
+                                <button key={s.id} onClick={() => startShift(s.id)} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 active:bg-slate-50 transition-all text-left flex flex-col items-start relative overflow-hidden group">
+                                    <div className={`absolute top-0 right-0 w-16 h-16 rounded-bl-3xl ${s.color} opacity-10 group-active:scale-150 transition-transform duration-500`}></div>
+                                    <div className={`${s.color} text-white w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-sm z-10`}>
+                                        {s.icon}
+                                    </div>
+                                    <h3 className="text-lg font-bold text-slate-800 mb-1 z-10">{s.name}</h3>
+                                    <p className="text-xs text-slate-500 flex-grow z-10">{s.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={() => setGameState('START')} className="mt-8 text-slate-500 hover:text-slate-800 font-bold text-sm w-full flex items-center justify-center gap-2 py-4">
+                            <HomeIcon size={18} /> Voltar para o início
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const renderPrep = () => (
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900 text-white fade-in relative">
+                    <button onClick={() => setGameState('START')} className="absolute top-4 left-4 p-3 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors z-10 shadow-lg">
+                        <HomeIcon size={24} />
+                    </button>
+                    <div className="w-full max-w-sm bg-slate-800 p-6 rounded-3xl border border-slate-700 text-center shadow-2xl relative overflow-hidden">
+                        <div className={`absolute top-0 left-0 w-full h-2 ${sector.color}`}></div>
+                        <div className="text-5xl mb-4 mt-2">{sector.icon}</div>
+                        <h2 className="text-xl font-black mb-1">PREPARAÇÃO DE TURNO</h2>
+                        
+                        <div className="my-6 bg-slate-700/50 rounded-2xl p-4 text-left border border-slate-600/50">
+                            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Setor</p>
+                            <p className="font-bold text-lg mb-3">{sector.name}</p>
+                            
+                            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Sua Função</p>
+                            <p className="font-bold text-lg mb-3 text-blue-300">{sector.role}</p>
+                            
+                            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Unidade</p>
+                            <p className="font-bold text-lg">Hotel Horizonte</p>
+                        </div>
+                        
+                        <p className="text-sm text-slate-300 mb-8 italic">"Alta ocupação confirmada. Respire fundo e tome boas decisões."</p>
+                        
+                        <button onClick={() => setGameState('PLAYING')} className={`${sector.color} text-white font-bold py-4 px-6 rounded-2xl w-full shadow-lg active:scale-95 transition-transform text-lg`}>
+                            INICIAR TURNO
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const renderPlaying = () => {
+                const current = situations[currentStage];
+                const progress = ((currentStage) / situations.length) * 100;
+
+                return (
+                    <div className="min-h-screen bg-slate-50 flex flex-col fade-in">
+                        {/* Header Fixo Mobile */}
+                        <header className="bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">{sector.icon}</span>
+                                <div>
+                                    <h1 className="font-bold text-slate-800 text-sm leading-tight">{sector.name}</h1>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase">{sector.role}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 text-slate-700 bg-slate-100 px-2 py-1 rounded-md text-xs font-bold">
+                                    <ClockIcon size={14} className="text-blue-600" />
+                                    {current.time}
+                                </div>
+                                <button onClick={() => setGameState('START')} className="text-slate-400 hover:text-rose-500 p-1.5 bg-slate-50 rounded-md transition-colors" title="Voltar ao início">
+                                    <HomeIcon size={18} />
+                                </button>
+                            </div>
+                        </header>
+
+                        {/* Barra Progresso */}
+                        <div className="w-full bg-slate-200 h-1.5">
+                            <div className={`h-1.5 ${sector.color} transition-all duration-500`} style={{ width: `${progress}%` }}></div>
+                        </div>
+                        <div className="text-center py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            SITUAÇÃO {currentStage + 1} DE {situations.length}
+                        </div>
+
+                        {/* Conteúdo da Situação */}
+                        <main className="flex-grow flex flex-col p-4 pb-24">
+                            <div className="w-full max-w-md mx-auto">
+                                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-5 mb-5 slide-up">
+                                    <div className="inline-block bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-1 rounded-md mb-3 uppercase tracking-wider">
+                                        Contexto
+                                    </div>
+                                    <p className="text-sm text-slate-600 mb-4 border-l-2 border-slate-200 pl-3 italic">{current.context}</p>
+                                    
+                                    <div className="flex items-start gap-3">
+                                        <AlertIcon className="text-orange-500 mt-0.5 flex-shrink-0" size={20} />
+                                        <h2 className="text-lg font-bold text-slate-800 leading-snug">{current.problem}</h2>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1 mb-2">Qual a sua decisão?</h3>
+                                    {current.options.map((opt, idx) => (
+                                        <button key={idx} onClick={() => handleDecision(opt)} disabled={consequenceModal !== null}
+                                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all min-h-[60px] 
+                                            ${consequenceModal ? 'opacity-40 cursor-not-allowed border-slate-200 bg-white' : 'border-slate-200 bg-white hover:border-blue-300 active:border-blue-500 active:bg-blue-50 shadow-sm'}`}>
+                                            <span className="font-semibold text-slate-700 text-sm">{opt.text}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </main>
+
+                        {/* Modal de Consequência Mobile-Optimized */}
+                        {consequenceModal && (
+                            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 fade-in p-0 sm:p-4">
+                                <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 pb-10 shadow-2xl slide-up max-h-[85vh] overflow-y-auto">
+                                    <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                        <CheckIcon className="text-green-500" size={24}/> O que aconteceu?
+                                    </h3>
+                                    <p className="text-base text-slate-600 mb-8">
+                                        {consequenceModal.cons}
+                                    </p>
+                                    
+                                    <button onClick={nextSituation} className={`${sector.color} text-white w-full py-4 rounded-2xl font-bold text-base active:scale-95 transition-transform`}>
+                                        AVANÇAR
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const renderEndAnim = () => (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white fade-in">
+                    <ClockIcon size={48} className="text-blue-500 mb-4 animate-pulse" />
+                    <h1 className="text-2xl md:text-4xl font-black mb-2 text-center px-4">TURNO ENCERRADO</h1>
+                    <p className="text-sm md:text-base text-slate-400">Processando seu relatório gerencial...</p>
+                </div>
+            );
+
+            const renderReport = () => {
+                // Cálculo de IA / Perfil Baseado em Dados Positivos
+                const getProfile = () => {
+                    const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+                    const topSkill = sortedScores[0][0]; // chave com maior pontuação
+                    
+                    const profiles = {
+                        hospede: { title: 'O Anfitrião', desc: 'Foco excepcional no encantamento e hospitalidade do cliente.', seed: 'Bella', color: 'from-pink-500 to-rose-500' },
+                        eficiencia: { title: 'O Velocista', desc: 'Resolução pragmática e extrema agilidade na operação.', seed: 'Felix', color: 'from-blue-500 to-cyan-500' },
+                        equipe: { title: 'O Agregador', desc: 'Mestre em sinergia, liderança e resolução de conflitos.', seed: 'Molly', color: 'from-purple-500 to-fuchsia-500' },
+                        organizacao: { title: 'O Estrategista', desc: 'Pilar da qualidade, processos e visão sistêmica profunda.', seed: 'Oliver', color: 'from-emerald-500 to-teal-500' },
+                        risco: { title: 'O Guardião', desc: 'Fortaleza nos processos legais, finanças e segurança patrimonial.', seed: 'Jack', color: 'from-orange-500 to-amber-500' }
+                    };
+                    return profiles[topSkill] || profiles.organizacao; 
+                };
+                
+                const profile = getProfile();
+                // Avatar estilo Manga (utilizando Micah do DiceBear)
+                const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${profile.seed}&backgroundColor=transparent&baseColor=f9c9b6`;
+
+                // Como não há mais scores negativos, a métrica das estrelas é ajustada para 
+                // faixas de ganho de pontos (máximo teórico por habilidade é ~25).
+                const getStars = (score) => {
+                    if (score >= 12) return 5;
+                    if (score >= 8) return 4;
+                    if (score >= 5) return 3;
+                    if (score >= 2) return 2;
+                    return 1;
+                };
+
+                const indicators = [
+                    { key: 'hospede', label: 'Hospitalidade' },
+                    { key: 'eficiencia', label: 'Agilidade' },
+                    { key: 'equipe', label: 'Trabalho em Equipe' },
+                    { key: 'organizacao', label: 'Processos' },
+                    { key: 'risco', label: 'Gestão de Risco' },
+                ];
+
+                const allChoices = history.map(h => h.choice);
+                // No novo modelo, todas as decisões são positivas/construtivas,
+                // então todas entram como destaques do perfil.
+                const allFeedbacks = [...new Set(allChoices.map(c => c.feedback))];
+                const goodFeedbacks = allFeedbacks.slice(0, 4);
+                // "Desenvolver" agora foca nas habilidades que tiveram menos pontos
+                const lowestSkill = Object.entries(scores).sort((a, b) => a[1] - b[1])[0][0];
+                const devFeedbackMap = {
+                    hospede: 'Aproveitar mais oportunidades de focar na personalização e no encantamento direto do cliente.',
+                    eficiencia: 'Buscar encurtar os caminhos e agir com um pouco mais de pragmatismo e velocidade.',
+                    equipe: 'Envolver mais a liderança e os colegas de outros setores na tomada de decisão.',
+                    organizacao: 'Se atentar mais aos procedimentos padrão, registros em sistema e qualidade documental.',
+                    risco: 'Fortalecer a visão sobre segurança patrimonial, finanças e normas corporativas rígidas.'
+                };
+                const badFeedbacks = [devFeedbackMap[lowestSkill]];
+
+                const handleShareWhatsApp = () => {
+                    // Aqui você colocará a URL onde o jogo está hospedado (ex: https://meusite.com/um-dia-no-hotel)
+                    const urlDoJogo = "https://seusite.com/simulador"; // <<-- ALTERE AQUI
+                    
+                    const text = `🏨 *UM DIA NO HOTEL* - Resultado da Simulação!\n\nAcabei de finalizar meu turno no setor de *${sector.name}*.\n\nMeu Perfil: *${profile.title}*\n_${profile.desc}_\n\nDescubra o seu perfil hoteleiro também e jogue aqui 👇:\n${urlDoJogo}`;
+                    
+                    const encodedText = encodeURIComponent(text);
+                    window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank');
+                };
+
+                return (
+                    <div className="min-h-screen bg-slate-100 p-4 pb-24 fade-in">
+                        <div className="max-w-xl mx-auto space-y-6">
+                            
+                            {/* Card de Perfil - IA Gerada */}
+                            <div className={`bg-gradient-to-br ${profile.color} rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden mt-4`}>
+                                <div className="absolute opacity-10 right-[-20%] top-[-20%]">
+                                    <StarIcon size={200} />
+                                </div>
+                                <div className="relative z-10 flex flex-col items-center">
+                                    <div className="bg-white/20 p-2 rounded-full mb-3 backdrop-blur-sm border-2 border-white/40">
+                                        <img src={avatarUrl} alt="Avatar de IA" className="w-24 h-24 rounded-full bg-white shadow-inner" />
+                                    </div>
+                                    <p className="text-xs uppercase tracking-widest font-bold text-white/80 mb-1">Seu Perfil Hoje</p>
+                                    <h1 className="text-3xl font-black mb-1">{profile.title}</h1>
+                                    <p className="text-sm font-medium">{profile.desc}</p>
+                                    <p className="text-[10px] mt-4 opacity-70 bg-black/20 px-3 py-1 rounded-full inline-block">AVATAR IA GERADO COM BASE NAS SUAS DECISÕES</p>
+                                </div>
+                            </div>
+
+                            {/* Desempenho Visual */}
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Indicadores da Simulação</h2>
+                                <div className="space-y-3">
+                                    {indicators.map(ind => (
+                                        <div key={ind.key} className="flex items-center justify-between">
+                                            <span className="text-sm font-semibold text-slate-600">{ind.label}</span>
+                                            <div className="flex gap-1 text-yellow-400">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <svg key={i} className={`w-4 h-4 ${i < getStars(scores[ind.key]) ? 'fill-current' : 'text-slate-200 fill-current'}`} viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Destaques */}
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2"><CheckIcon size={16} className="text-green-500"/> O que você fez bem</h2>
+                                <ul className="space-y-3">
+                                    {goodFeedbacks.length > 0 ? goodFeedbacks.map((f, i) => (
+                                        <li key={i} className="text-sm font-medium text-slate-600 flex gap-2"><span className="text-green-500 mt-0.5">•</span> <span>{f}</span></li>
+                                    )) : <li className="text-sm text-slate-500 italic">O turno foi muito tenso e focado em manter a operação sem quebras severas.</li>}
+                                </ul>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2"><AlertIcon size={16} className="text-orange-500"/> Desenvolver</h2>
+                                <ul className="space-y-3">
+                                    {badFeedbacks.length > 0 ? badFeedbacks.map((f, i) => (
+                                        <li key={i} className="text-sm font-medium text-slate-600 flex gap-2"><span className="text-orange-400 mt-0.5">•</span> <span>{f}</span></li>
+                                    )) : <li className="text-sm text-slate-500 italic">Ótima performance nas resoluções críticas do turno.</li>}
+                                </ul>
+                            </div>
+
+                            {/* Desafio Final */}
+                            <div className="bg-slate-800 p-6 rounded-3xl shadow-sm text-center text-white">
+                                <h2 className="text-xs font-black uppercase tracking-widest mb-2 text-blue-400">🏆 Seu Próximo Desafio</h2>
+                                <p className="text-sm">"Tente observar como uma decisão isolada no seu setor causa um efeito dominó em todo o hotel."</p>
+                            </div>
+
+                            {/* Ações */}
+                            <div className="flex flex-col gap-3 pt-4">
+                                <button onClick={handleShareWhatsApp} className="w-full bg-blue-100 text-blue-700 font-bold py-4 px-4 rounded-2xl active:bg-blue-200 transition text-sm flex items-center justify-center gap-2">
+                                    <ShareIcon size={18}/> COMPARTILHAR RESULTADO
+                                </button>
+                                <button onClick={() => startShift(sector.id)} className="w-full bg-white text-slate-800 border border-slate-300 font-bold py-4 px-4 rounded-2xl active:bg-slate-50 transition text-sm flex items-center justify-center gap-2">
+                                    <RefreshIcon size={18}/> JOGAR MESMO SETOR
+                                </button>
+                                <button onClick={() => setGameState('SELECTION')} className="w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-2xl active:bg-slate-700 transition text-sm flex items-center justify-center gap-2">
+                                    <BriefcaseIcon size={18}/> ESCOLHER OUTRO SETOR
+                                </button>
+                                <button onClick={() => setGameState('START')} className="w-full bg-slate-200 text-slate-700 font-bold py-4 px-4 rounded-2xl active:bg-slate-300 transition text-sm flex items-center justify-center gap-2">
+                                    <HomeIcon size={18}/> VOLTAR PARA O INÍCIO
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                );
+            };
+
+            switch(gameState) {
+                case 'START': return renderStart();
+                case 'SELECTION': return renderSelection();
+                case 'PREP': return renderPrep();
+                case 'PLAYING': return renderPlaying();
+                case 'END': return renderEndAnim();
+                case 'REPORT': return renderReport();
+                default: return renderStart();
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
